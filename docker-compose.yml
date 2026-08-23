@@ -1,0 +1,20 @@
+# Local process isolation for Contributors (spec §2) — not a hosted server.
+# Docker is the only thing the host needs installed.
+services:
+  jugni:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jugni-tooling:latest
+    working_dir: /jugni
+    volumes:
+      # Repo bind-mount: raw/, trips/, input.json and build output land on the
+      # host filesystem normally, even though nothing executes on the host.
+      - .:/jugni
+    environment:
+      - PYTHONPATH=/jugni
+      - TZ=${TZ:-UTC}
+    # Keeps generated files owned by the invoking user rather than root.
+    user: "${JUGNI_UID:-1000}:${JUGNI_GID:-1000}"
+    stdin_open: true
+    tty: true

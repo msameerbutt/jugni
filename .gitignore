@@ -1,0 +1,21 @@
+# --- Security boundary (spec §4): real PII must never reach the public repo ---
+raw/*
+!raw/.gitkeep
+trips/*
+!trips/.gitkeep
+input.json
+output-*.json
+output.json
+
+# --- Build output ---
+dist/
+*.pyc
+__pycache__/
+.pytest_cache/
+
+# --- Editors / OS ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+.make/

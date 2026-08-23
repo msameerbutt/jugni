@@ -1,0 +1,12 @@
+# Raw-folder intake (spec §2): mixed formats — PDFs, photos, spreadsheets, notes.
+pdfplumber==0.11.4      # PDF text + table extraction (booking confirmations)
+pypdf==5.1.0            # fast PDF text fallback / metadata
+openpyxl==3.1.5         # .xlsx itineraries
+pytesseract==0.3.13     # OCR bridge to tesseract for photos/screenshots
+Pillow==11.0.0          # image decoding for OCR
+beautifulsoup4==4.12.3  # saved .html research pages
+lxml==5.3.0             # bs4 parser backend
+python-dateutil==2.9.0  # tolerant datetime parsing from messy sources
+
+# Build tooling
+jsonschema==4.23.0      # `make validate` — schema shape check (spec §4)

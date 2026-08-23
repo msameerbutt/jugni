@@ -1,0 +1,6 @@
+.git
+raw
+trips
+dist
+__pycache__
+*.pyc

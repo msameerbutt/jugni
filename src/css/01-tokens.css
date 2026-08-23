@@ -1,0 +1,80 @@
+/* Design tokens — spec §11.
+   Roles are stable across themes: brass = progress/done/CTA,
+   transit-blue = links/"you are here", rust = alerts only. */
+
+:root {
+  color-scheme: light;
+
+  --bg:            #EDEEE7;   /* cool stone paper */
+  --surface:       #FFFFFF;
+  --surface-sunk:  #E5E7DE;
+  --ink:           #1B2421;   /* deep ink */
+  --ink-soft:      #5C665F;
+  --line:          #D6D9CD;
+  --brass:         #A9762C;   /* progress, done-states, CTAs */
+  --transit-blue:  #2C5271;   /* links, "you are here" */
+  --rust:          #A23B2E;   /* overdue / alerts ONLY */
+
+  --brass-wash:        color-mix(in srgb, var(--brass) 12%, transparent);
+  --transit-blue-wash: color-mix(in srgb, var(--transit-blue) 10%, transparent);
+  --rust-wash:         color-mix(in srgb, var(--rust) 10%, transparent);
+  --on-accent:         #FFFFFF;
+
+  /* Type — three roles, each earning its job (spec §11). */
+  --font-display: "Jugni Display", "Archivo Narrow", "Roboto Condensed", "Oswald",
+                  "Arial Narrow", system-ui, sans-serif;
+  --font-body:    "Jugni Sans", "Inter", -apple-system, BlinkMacSystemFont,
+                  "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:    "Jugni Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular,
+                  Menlo, Consolas, monospace;
+
+  --step--1: clamp(0.78rem, 0.76rem + 0.1vw, 0.84rem);
+  --step-0:  clamp(0.94rem, 0.91rem + 0.15vw, 1rem);
+  --step-1:  clamp(1.1rem, 1.03rem + 0.35vw, 1.28rem);
+  --step-2:  clamp(1.35rem, 1.2rem + 0.7vw, 1.75rem);
+  --step-3:  clamp(1.7rem, 1.4rem + 1.4vw, 2.6rem);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --radius:    10px;
+  --radius-sm: 6px;
+  --radius-lg: 16px;
+
+  --shadow-1: 0 1px 2px rgba(27, 36, 33, 0.06), 0 2px 8px rgba(27, 36, 33, 0.04);
+  --shadow-2: 0 8px 28px rgba(27, 36, 33, 0.12);
+
+  --rail-w: 250px;
+  --tabbar-h: 62px;
+  --content-max: 940px;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur:  260ms;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:           #14181A;   /* near-black, warmer than pure black */
+  --surface:      #1C2123;
+  --surface-sunk: #101416;
+  --ink:          #E9E7DD;
+  --ink-soft:     #9CA39A;
+  --line:         #33393A;
+  --brass:        #C99A4E;
+  --transit-blue: #6FA0C4;
+  --rust:         #D46B57;
+
+  --brass-wash:        color-mix(in srgb, var(--brass) 16%, transparent);
+  --transit-blue-wash: color-mix(in srgb, var(--transit-blue) 14%, transparent);
+  --rust-wash:         color-mix(in srgb, var(--rust) 14%, transparent);
+  --on-accent:        #14181A;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.24);
+  --shadow-2: 0 8px 28px rgba(0, 0, 0, 0.5);
+}

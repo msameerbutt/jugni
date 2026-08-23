@@ -1,0 +1,157 @@
+/* App frame: persistent nav rail (desktop) / tab bar (mobile) — spec §11. */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  min-height: 100%;
+}
+
+/* ---------- Nav rail: ticket stubs ---------- */
+
+.rail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-4);
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+
+.rail__brand { display: flex; align-items: baseline; gap: var(--space-2); }
+.rail__wordmark {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.rail__tripname {
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+  margin-top: var(--space-1);
+  line-height: 1.3;
+}
+
+.rail__nav { display: flex; flex-direction: column; gap: 2px; }
+
+/* Each nav item is a ticket stub: perforated left edge, tear notch. */
+.navstub {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: var(--step-0);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.navstub::before {
+  content: "";
+  position: absolute;
+  left: 6px; top: 50%;
+  width: 3px; height: 0;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--brass);
+  transition: height var(--dur) var(--ease);
+}
+.navstub:hover { background: var(--surface-sunk); }
+.navstub[aria-current="page"] {
+  background: var(--brass-wash);
+  color: var(--ink);
+  font-weight: 600;
+}
+.navstub[aria-current="page"]::before { height: 60%; }
+.navstub__icon { width: 18px; flex: none; color: var(--ink-soft); }
+.navstub[aria-current="page"] .navstub__icon { color: var(--brass); }
+.navstub__count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
+.rail__foot { margin-top: auto; display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* ---------- Content ---------- */
+
+.main { min-width: 0; padding: var(--space-6) var(--space-5) var(--space-7); }
+.wrap { max-width: var(--content-max); margin-inline: auto; }
+
+.page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
+}
+.page-head__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+.section { margin-top: var(--space-6); }
+.section__head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-3); margin-bottom: var(--space-3);
+}
+
+.grid { display: grid; gap: var(--space-4); }
+.grid--2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.grid--3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+/* ---------- Page transitions (real navigation feel, spec §1) ---------- */
+
+.view { animation: view-in var(--dur) var(--ease) both; }
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- Mobile: tab bar ---------- */
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .rail {
+    position: fixed;
+    inset: auto 0 0 0;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+    padding: var(--space-1) var(--space-2)
+             calc(var(--space-1) + env(safe-area-inset-bottom, 0px));
+    border-right: 0;
+    border-top: 1px solid var(--line);
+    overflow-x: auto;
+    z-index: 30;
+  }
+  .rail__brand, .rail__foot, .navstub__count, .rail__thread { display: none; }
+  .rail__nav { flex-direction: row; width: 100%; gap: 0; }
+  .navstub {
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 0 auto;
+    min-width: 62px;
+    padding: var(--space-2) var(--space-1);
+    font-size: 0.68rem;
+    text-align: center;
+  }
+  .navstub::before { left: 50%; top: 4px; width: 0; height: 3px; transform: translateX(-50%); }
+  .navstub[aria-current="page"]::before { width: 22px; height: 3px; }
+  .navstub__icon { width: 20px; }
+  .main {
+    padding: var(--space-4) var(--space-4)
+             calc(var(--tabbar-h) + var(--space-6));
+  }
+  .mobile-head { display: flex; }
+}
+
+.mobile-head { display: none; }

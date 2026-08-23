@@ -1,0 +1,68 @@
+{
+  "trip": {
+    "schemaVersion": "1.0",
+    "name": "Nordic Loop",
+    "startDate": "2026-08-15",
+    "endDate": "2026-09-05",
+    "homeCurrency": "AUD",
+    "budget": 6500,
+    "notes": "Synthetic fixture trip. No real bookings, no real people — used by make check so the screens are exercised with data, not just empty states.",
+    "theme": "light"
+  },
+  "travelers": [
+    { "id": "trav_primary", "role": "primary", "personaProfiles": ["budget-backpacker", "adventure-outdoor", "nightlife-focused"], "nickname": "jetlagged-koala", "email": "koala@example.invalid", "age": 31 },
+    { "id": "trav_companion", "role": "companion", "personaProfiles": ["slow-cultural"], "nickname": "slow-lorris", "email": "lorris@example.invalid", "age": 29 }
+  ],
+  "cities": [
+    { "id": "city_berlin", "name": "Berlin", "country": "Germany", "lat": 52.52, "lon": 13.405, "arriveDate": "2026-08-15", "departDate": "2026-08-20", "notes": "Base for the first week." },
+    { "id": "city_copenhagen", "name": "Copenhagen", "country": "Denmark", "lat": 55.6761, "lon": 12.5683, "arriveDate": "2026-08-20", "departDate": "2026-08-24", "notes": "" },
+    { "id": "city_oslo", "name": "Oslo", "country": "Norway", "lat": 59.9139, "lon": 10.7522, "arriveDate": "2026-08-24", "departDate": "2026-08-29", "notes": "Fjord day trip booked from here." },
+    { "id": "city_stockholm", "name": "Stockholm", "country": "Sweden", "lat": 59.3293, "lon": 18.0686, "arriveDate": "2026-08-29", "departDate": "2026-09-05", "notes": "" }
+  ],
+  "transport": [
+    { "id": "trn_ber_cph", "mode": "train", "from": "Berlin Hbf", "to": "København H", "departDateTime": "2026-08-20T07:34:00+02:00", "arriveDateTime": "2026-08-20T14:47:00+02:00", "bookingRef": "XK4T9P", "cost": 89.0, "currency": "EUR", "notes": "from Berlin-Copenhagen.pdf" },
+    { "id": "trn_cph_osl", "mode": "flight", "from": "CPH", "to": "OSL", "departDateTime": "2026-08-24T11:05:00+02:00", "arriveDateTime": "2026-08-24T12:20:00+02:00", "bookingRef": "ZDNF55", "cost": 640.0, "currency": "NOK", "notes": "hand luggage only; from Copenhagen-to-Oslo-ticket.pdf" },
+    { "id": "trn_osl_sto", "mode": "train", "from": "Oslo S", "to": "Stockholm C", "departDateTime": "2026-08-29T08:12:00+02:00", "arriveDateTime": "2026-08-29T14:35:00+02:00", "bookingRef": "SJ88214", "cost": 795.0, "currency": "SEK", "notes": "" }
+  ],
+  "stays": [
+    { "id": "stay_berlin", "cityId": "city_berlin", "name": "Kreuzberg Guesthouse", "address": "Oranienstraße 140, 10969 Berlin", "checkIn": "2026-08-15T15:00:00+02:00", "checkOut": "2026-08-20T11:00:00+02:00", "confirmationNumber": "BG-4471902", "cost": 415.0, "currency": "EUR", "cancellationDeadline": "2026-08-13T23:59:00+02:00", "notes": "from Berlin_ Confirmation.pdf" },
+    { "id": "stay_cph", "cityId": "city_copenhagen", "name": "Nørrebro Hostel", "address": "Nørrebrogade 92, 2200 København", "checkIn": "2026-08-20", "checkOut": "2026-08-24", "confirmationNumber": "NH-77213", "cost": 2100.0, "currency": "DKK", "cancellationDeadline": "2026-08-18T18:00:00+02:00", "notes": "6-bed dorm" },
+    { "id": "stay_oslo", "cityId": "city_oslo", "name": "Grünerløkka Rooms", "address": "Thorvald Meyers gate 33, 0555 Oslo", "checkIn": "2026-08-24", "checkOut": "2026-08-29", "confirmationNumber": "GR-2026-118", "cost": 5200.0, "currency": "NOK", "cancellationDeadline": "2026-08-22T14:00:00+02:00", "notes": "" },
+    { "id": "stay_sthlm", "cityId": "city_stockholm", "name": "Södermalm Hostel", "address": "Götgatan 78, 118 30 Stockholm", "checkIn": "2026-08-29", "checkOut": "2026-09-05", "confirmationNumber": "SH-90441", "cost": 4300.0, "currency": "SEK", "cancellationDeadline": "", "notes": "" }
+  ],
+  "checklist": [
+    { "id": "task_insurance", "task": "Buy travel insurance", "category": "documents", "cityId": "", "dueDate": "2026-08-10", "done": true, "completedDate": "2026-08-08" },
+    { "id": "task_cards", "task": "Tell the bank about the travel dates", "category": "money", "cityId": "", "dueDate": "2026-08-12", "done": true, "completedDate": "2026-08-11" },
+    { "id": "task_rainshell", "task": "Pack a rain shell", "category": "packing", "cityId": "city_oslo", "dueDate": "2026-08-14", "done": false, "completedDate": null },
+    { "id": "task_boots", "task": "Pack hiking boots", "category": "packing", "cityId": "city_oslo", "dueDate": "2026-08-14", "done": true, "completedDate": "2026-08-14" },
+    { "id": "task_fjord", "task": "Book the fjord day trip", "category": "booking", "cityId": "city_oslo", "dueDate": "2026-08-22", "done": false, "completedDate": null },
+    { "id": "task_simcard", "task": "Buy a local SIM", "category": "general", "cityId": "city_berlin", "dueDate": "2026-08-16", "done": false, "completedDate": null },
+    { "id": "task_cph_cancel", "task": "Decide on the Copenhagen hostel before free cancellation ends", "category": "booking", "cityId": "city_copenhagen", "dueDate": "2026-08-18", "done": false, "completedDate": null }
+  ],
+  "expenses": [
+    { "id": "exp_berlin_food", "label": "Currywurst and beers", "category": "food", "amount": 24.5, "currency": "EUR", "homeAmount": 41.2, "homeCurrency": "AUD", "rateSnapshotDate": "2026-08-15", "date": "2026-08-15", "cityId": "city_berlin" },
+    { "id": "exp_berlin_transit", "label": "7-day transit pass", "category": "transport", "amount": 41.0, "currency": "EUR", "homeAmount": 68.9, "homeCurrency": "AUD", "rateSnapshotDate": "2026-08-16", "date": "2026-08-16", "cityId": "city_berlin" },
+    { "id": "exp_berlin_stay", "label": "Kreuzberg Guesthouse", "category": "stay", "amount": 415.0, "currency": "EUR", "homeAmount": 697.6, "homeCurrency": "AUD", "rateSnapshotDate": "2026-08-15", "date": "2026-08-15", "cityId": "city_berlin" },
+    { "id": "exp_museum", "label": "Pergamon ticket", "category": "activity", "amount": 19.0, "currency": "EUR", "homeAmount": 31.9, "homeCurrency": "AUD", "rateSnapshotDate": "2026-08-18", "date": "2026-08-18", "cityId": "city_berlin" },
+    { "id": "exp_offline", "label": "Late-night kebab", "category": "food", "amount": 9.5, "currency": "EUR", "homeAmount": null, "homeCurrency": "AUD", "rateSnapshotDate": null, "date": "2026-08-20", "cityId": "city_berlin" }
+  ],
+  "destinationNotes": [
+    { "id": "note_berlin_emergency", "cityId": "city_berlin", "title": "Emergency numbers", "body": "112 for ambulance and fire, 110 for police. Pharmacies show the nearest out-of-hours one on the door." },
+    { "id": "note_berlin_plug", "cityId": "city_berlin", "title": "Power", "body": "Type C / F sockets, 230V. An Australian plug needs an adapter, not a converter." },
+    { "id": "note_berlin_transit", "cityId": "city_berlin", "title": "Transit", "body": "AB zones cover everything inside the ring. Validate paper tickets before boarding — inspectors are frequent and unsympathetic." },
+    { "id": "note_oslo_cost", "cityId": "city_oslo", "title": "Costs", "body": "Roughly double Berlin for eating out. Supermarket dinners are normal here and not a sign of failure." },
+    { "id": "note_oslo_night", "cityId": "city_oslo", "title": "After dark", "body": "Last metro around 00:30 on weeknights, night buses on Fri/Sat. Grünerløkka stays busy latest." },
+    { "id": "note_cph_bikes", "cityId": "city_copenhagen", "title": "Bikes", "body": "Bike lanes are traffic lanes. Signal turns, keep right, do not stop in one." }
+  ],
+  "log": [
+    { "id": "log_1", "date": "2026-08-08", "relatedType": "checklist", "relatedId": "task_insurance", "type": "task", "text": "Done: Buy travel insurance" },
+    { "id": "log_2", "date": "2026-08-15", "relatedType": "expense", "relatedId": "exp_berlin_food", "type": "expense", "text": "Logged €24.50 — Currywurst and beers" },
+    { "id": "log_3", "date": "2026-08-16", "relatedType": "extra", "relatedId": "extra_fjord", "type": "note", "text": "Fjord trip sells out in August — book by the 22nd" }
+  ],
+  "extras": [
+    { "id": "extra_fjord", "cityId": "city_oslo", "title": "Fjord day trip options", "displayHint": "list", "content": "Norway in a Nutshell — full day, books out early\nFlåm railway only — half day, cheaper\nSelf-guided by train to Myrdal — cheapest, needs an early start" },
+    { "id": "extra_companion", "cityId": "city_copenhagen", "title": "Companion's separate booking", "displayHint": "text", "content": "slow-lorris has their own hostel in Copenhagen on 20–22 Aug and rejoins in Oslo. Their itinerary lives in their own Jugni — this note is here so the divergence is not a mystery." },
+    { "id": "extra_tipping", "cityId": "", "title": "Tipping norms", "displayHint": "table", "content": "Germany: round up, 5-10% for good service\nDenmark: included, no tip expected\nNorway: included, round up if you like\nSweden: included, 5-10% at sit-down dinners" },
+    { "id": "extra_hostel_link", "cityId": "city_stockholm", "title": "Hostel considered but not booked", "displayHint": "link", "content": "https://example.invalid/stockholm-hostel-alternative" }
+  ]
+}
