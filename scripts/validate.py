@@ -18,23 +18,27 @@ from scripts.lib.schema import validate
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--input", required=True, help="path to input.json")
+    ap.add_argument("--trip", default="", help="trip slug under trips/")
+    ap.add_argument("--name", default=paths.DEFAULT_INPUT,
+                    help="which file under the trip's input/ to check (default: default)")
+    ap.add_argument("--input", default="", help="explicit path (overrides --trip/--name)")
     ap.add_argument("--strict", action="store_true", help="treat warnings as failures too")
     args = ap.parse_args()
 
-    path = Path(args.input)
-    if not path.is_absolute():
-        path = paths.ROOT / path
+    if not args.input and not args.trip:
+        ap.error("give --trip <slug> or --input <path>")
+    path = paths.resolve_input(args.trip, args.name, args.input)
+    shown = path.relative_to(paths.ROOT) if path.is_relative_to(paths.ROOT) else path
 
     if not path.exists():
-        print(f"validate: no file at {args.input} — nothing to check yet.")
+        print(f"validate: no file at {shown} — nothing to check yet.")
         print("  (`make build` alone still produces the empty shell — that's build path (b).)")
         return 0
 
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        print(f"FAIL {args.input}: not valid JSON — {exc}")
+        print(f"FAIL {shown}: not valid JSON — {exc}")
         return 1
 
     errors, warnings = validate(doc)

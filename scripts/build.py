@@ -12,6 +12,7 @@ in-browser Import (build path (b)) — the same running app either way.
 
 import argparse
 import base64
+import hashlib
 import json
 import re
 import subprocess
@@ -156,7 +157,11 @@ def embed_json(data) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--input", default="", help="path to a trip's input.json (optional)")
+    ap.add_argument("--trip", default="", help="trip slug under trips/")
+    ap.add_argument("--name", default=paths.DEFAULT_INPUT,
+                    help="which file under the trip's input/ to build "
+                         "(default: default); ignored when --input is given")
+    ap.add_argument("--input", default="", help="explicit path to a trip file (overrides --name)")
     ap.add_argument("--out", required=True, help="output .html path")
     ap.add_argument("--no-minify", action="store_true", help="readable output, for debugging")
     args = ap.parse_args()
@@ -164,14 +169,25 @@ def main() -> int:
     out_path = Path(args.out)
     if not out_path.is_absolute():
         out_path = paths.ROOT / out_path
-    input_path = (paths.ROOT / args.input) if args.input else None
+
+    # An explicit --input wins; otherwise the trip's own input/<name>.json.
+    # Without either there is nothing to bake in, which is build path (b) in
+    # spec §8 — the empty shell that imports a trip in-browser.
+    if args.input or args.trip:
+        input_path = paths.resolve_input(args.trip, args.name, args.input)
+    else:
+        input_path = None
 
     rel = out_path.relative_to(paths.ROOT) if out_path.is_relative_to(paths.ROOT) else out_path
     print(f"building {rel}")
 
     trip = load_json(input_path)
     if input_path and trip is None:
-        print(f"  !     {args.input} not found — building the empty shell instead")
+        shown = input_path.relative_to(paths.ROOT) if input_path.is_relative_to(paths.ROOT) else input_path
+        print(f"  !     {shown} not found — building the empty shell instead")
+    elif trip is not None and args.trip:
+        shown = input_path.relative_to(paths.ROOT) if input_path.is_relative_to(paths.ROOT) else input_path
+        print(f"  input:{shown}")
 
     defaults = strip_comments(load_json(paths.ROOT / "default.json") or {})
 
@@ -195,8 +211,20 @@ def main() -> int:
               f"— add them to src/icons/flags.txt and run `make icons`")
 
     name = (trip or {}).get("trip", {}).get("name") or "Jugni"
+
+    # Identity of the data baked into this file. The app saves the trip to
+    # localStorage and, by design, prefers that copy on reopen — otherwise
+    # reopening would discard everything the traveller has done. But that also
+    # means a REBUILT file silently shows the old saved trip: regenerate with
+    # two new bookings, open it, and they are not there. Stamping the build
+    # lets the app notice it is holding a copy from a different build and say
+    # so, instead of quietly disagreeing with its own contents.
+    build_id = hashlib.sha256(
+        embed_json(trip).encode("utf-8")).hexdigest()[:12] if trip else ""
+
     template = (paths.TEMPLATES / "app.html").read_text(encoding="utf-8")
     html = (template
+            .replace("{{BUILD_ID}}", build_id)
             .replace("{{TRIP_TITLE}}", f"{name} · Jugni" if name != "Jugni" else "Jugni")
             .replace("{{TRIP_DESCRIPTION}}",
                      "Your trip, in one place — checklist, cities, expenses, weather and guide.")

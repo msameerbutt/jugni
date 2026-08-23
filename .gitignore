@@ -1,6 +1,6 @@
 # --- Security boundary (spec §4): real PII must never reach the public repo ---
-raw/*
-!raw/.gitkeep
+# A trip owns its raw/, intake/ and input/, so ignoring trips/ covers all three:
+# booking PDFs, extracted text, names, GPS coordinates, confirmation numbers.
 trips/*
 !trips/.gitkeep
 input.json

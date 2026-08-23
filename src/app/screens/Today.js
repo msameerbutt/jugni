@@ -2,7 +2,7 @@ import { html } from '../lib/html.js';
 import { Icon, Flag } from '../lib/icons.js';
 import { Stat, Money, Meter, Empty, Section, PageHead, Stamp, Fold, CopyButton } from '../ui/components.js';
 import { TaskRow, LegCard, AlertBlock } from '../ui/parts.js';
-import { useState, useAsync } from '../ui/hooks.js';
+import { useState, useEffect, useAsync } from '../ui/hooks.js';
 import * as D from '../state/derive.js';
 import * as A from '../actions.js';
 import { hasBaked } from '../state/store.js';
@@ -12,11 +12,23 @@ import { todayISO, addDays, fmtDateLong, fmtDateMed, fmtDate, fmtRange,
 
 const HORIZON_DAYS = 14;
 
-export function Today({ state }) {
-  /* The app always opens on the real today; the strip only changes what is
-     being looked at (spec §12). */
-  const [viewDate, setViewDate] = useState(todayISO());
+/* `#/today/2026-09-18` — a specific day, as linked from the Route screen's
+   by-day lens. Anything else in the slot is ignored rather than trusted. */
+const asDate = (p) => (/^\d{4}-\d{2}-\d{2}$/.test(p || '') ? p : null);
+
+export function Today({ state, param }) {
+  /* Opens on the real today unless a date was asked for by name; the strip
+     only changes what is being looked at (spec §12). */
+  const [viewDate, setViewDate] = useState(() => asDate(param) || todayISO());
   const { startDate } = state.trip;
+
+  /* The route name does not change between #/today and #/today/<date>, so the
+     screen is never remounted and the initialiser above runs only once. This
+     is what actually moves the view when a day row is opened. */
+  useEffect(() => {
+    const wanted = asDate(param);
+    if (wanted) setViewDate(wanted);
+  }, [param]);
 
   if (D.phase(state) === 'planning') {
     return html`

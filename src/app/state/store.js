@@ -8,6 +8,10 @@ import { emptyDoc, normalize, applyDefaults, SCHEMA_VERSION } from './schema.js'
 import { uid, todayISO } from '../lib/util.js';
 
 const KEY = 'jugni.trip.v1';
+/* Which build the saved copy came from. Kept beside the trip rather than
+   inside it: it describes the file, not the journey, and must never travel
+   into an exported output-<nickname>.json. */
+const BUILD_KEY = 'jugni.build.v1';
 
 /* The trip is plain JSON, so a round-trip clone is equivalent to
    structuredClone and works everywhere — including older webviews and the
@@ -27,6 +31,11 @@ let catalogue = { categories: [], checklistDefaults: [] };
 let warnings = [];
 let readonly = false;
 let needsFork = false;
+/* Set at boot when this file was built from newer trip data than the copy
+   saved in this browser. Never acted on automatically — the saved copy holds
+   ticked tasks and logged spend that the rebuild knows nothing about. */
+let staleBuild = null;
+let currentBuild = '';
 const listeners = new Set();
 
 /* An immutable snapshot per commit: components compare by identity, and undo
@@ -53,9 +62,10 @@ export const takeForkFlag = () => { const v = needsFork; needsFork = false; retu
 
 /* ---------- Boot ---------- */
 
-export function init(baked, defaults) {
+export function init(baked, defaults, buildId = '') {
   catalogue = defaults || catalogue;
   bakedDoc = baked?.trip ? baked : null;
+  currentBuild = buildId || '';
 
   let source = null, origin = 'empty';
   try {
@@ -67,15 +77,46 @@ export function init(baked, defaults) {
      time; otherwise reopening the file would discard their trip. */
   if (!source && baked?.trip && !takeClearedFlag()) { source = baked; origin = 'baked'; }
 
+  /* …but that same rule hides a regenerated file behind a stale saved copy.
+     Rebuild with two new bookings, reopen, and the app shows yesterday's trip
+     while the file it is running from contains today's. Detect it and let the
+     UI offer the choice; taking it automatically would throw away ticked
+     tasks and logged spend, which is the very thing the rule above protects. */
+  let savedBuild = null;
+  try { savedBuild = localStorage.getItem(BUILD_KEY); } catch { /* ignore */ }
+  staleBuild = (origin === 'local' && buildId && savedBuild && savedBuild !== buildId)
+    ? { from: savedBuild, to: buildId } : null;
+
+  /* A copy saved before this file started stamping builds carries no build at
+     all. There is nothing to compare it against, so claiming it is stale would
+     be a guess — record the current build instead, silently, so the NEXT
+     rebuild is detected properly. The one-time cost is that a browser
+     upgrading across this change is not warned; Trip data → "Restore the trip
+     built into this file" is the way out of that, and only needed once. */
+  if (origin === 'local' && buildId && !savedBuild) rememberBuild(buildId);
+
   const res = normalize(source);
   state = applyDefaults(res.doc, catalogue);
   warnings = res.warnings;
 
   if (origin !== 'local') persist();
+  /* Record the build this browser is holding, but only once it is genuinely
+     this build's data — otherwise a stale copy would stamp itself as current
+     and the mismatch would never be reported again. */
+  if (origin !== 'local' && buildId) rememberBuild(buildId);
   applyTheme();
   emit();
   return origin;
 }
+
+function rememberBuild(id) {
+  if (readonly) return;
+  try { localStorage.setItem(BUILD_KEY, id); } catch { /* ignore */ }
+}
+
+/* { from, to } when this file is newer than the saved copy, else null. */
+export const getStaleBuild = () => staleBuild;
+export const clearStaleBuild = () => { staleBuild = null; };
 
 export function setReadonly(on) {
   readonly = !!on;
@@ -164,6 +205,10 @@ export function restoreBuilt() {
   state = applyDefaults(res.doc, catalogue);
   warnings = res.warnings;
   try { localStorage.removeItem('jugni.cleared'); } catch { /* ignore */ }
+  /* This browser is now holding exactly this build, so the mismatch is
+     settled — stamp it, or the offer would come back on every load. */
+  staleBuild = null;
+  if (currentBuild) rememberBuild(currentBuild);
   persist();
   applyTheme();
   emit();

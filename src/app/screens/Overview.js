@@ -1,16 +1,20 @@
 import { html } from '../lib/html.js';
-import { Icon } from '../lib/icons.js';
+import { Icon, Flag, modeIcon } from '../lib/icons.js';
 import { Stat, Money, HomeMoney, Meter, Empty, Section, PageHead, Badge } from '../ui/components.js';
 import { LegLine, CityTitle } from '../ui/parts.js';
+import { usePref } from '../ui/hooks.js';
 import * as D from '../state/derive.js';
 import * as A from '../actions.js';
-import { fmtRange, todayISO, day, inRange, dayDiff, plural } from '../lib/util.js';
+import { fmtRange, fmtLocalTime, todayISO, toDate, day, inRange, dayDiff, plural } from '../lib/util.js';
 
 /* Overview — the manifest thread (spec §11). One connected route line of
    ticket stubs, not a grid of cards. */
 export function Overview({ state }) {
   const cities = D.citiesInOrder(state);
   const today = todayISO();
+  /* Which lens the traveller last used is a per-viewer preference, not trip
+     data — it must never travel inside a shared file. */
+  const [lens, setLens] = usePref('routeLens', 'stop');
 
   if (!cities.length) {
     return html`
@@ -20,8 +24,7 @@ export function Overview({ state }) {
       <//>`;
   }
 
-  const legs = D.transportInOrder(state);
-  const used = new Set();
+  const days = D.tripDays(state, today);
 
   return html`
     <${PageHead} eyebrow="Overview" title=${state.trip.name || 'Route'}
@@ -30,6 +33,22 @@ export function Overview({ state }) {
 
     <${Summary} state=${state} />
 
+    ${days.length > 0 && html`
+      <${LensSwitch} lens=${lens} onPick=${setLens}
+                     stops=${cities.length} days=${days.length} />`}
+
+    ${lens === 'day' && days.length
+      ? html`<${ByDay} state=${state} days=${days} />`
+      : html`<${ByStop} state=${state} cities=${cities} today=${today} />`}`;
+}
+
+/* ---------- Lens: by stop ---------- */
+
+function ByStop({ state, cities, today }) {
+  const legs = D.transportInOrder(state);
+  const used = new Set();
+
+  return html`
     <${Section}>
       <div class="thread">
         ${cities.map((city) => {
@@ -66,6 +85,106 @@ export function Overview({ state }) {
         </p>
         ${legs.filter((l) => !used.has(l.id)).map((l) => html`<${LegLine} key=${l.id} leg=${l} boxed />`)}
       <//>`}`;
+}
+
+/* ---------- Lens: by day ----------
+
+   One row per calendar day of the trip, DAY 1 through the flight home. Every
+   day is rendered, including the quiet ones: a day that vanishes because
+   nothing is booked on it is exactly the day worth noticing. */
+function ByDay({ state, days }) {
+  return html`
+    <${Section}>
+      <div class="thread thread--days">
+        ${days.map((d) => html`<${DayRow} key=${d.iso} d=${d} state=${state} />`)}
+      </div>
+    <//>`;
+}
+
+/* Property names arrive as booking-platform strings, often with the branch or
+   room type appended after a comma. Drop that tail; `.truncate` handles the
+   ones that are simply long. Same rule the by-stop lens already uses. */
+const shortStay = (stay) => stay.name.split(/[,(]/)[0].trim();
+
+function DayRow({ d, state }) {
+  const date = toDate(d.iso);
+  const moving = d.legs.length > 0;
+  const home = state.trip.homeCurrency;
+
+  return html`
+    <div class=${`thread__stop dayrow ${d.isToday ? 'thread__stop--now' : d.isPast ? 'thread__stop--done' : ''}`}>
+      <span class="thread__node"></span>
+      <a class=${`stub day ${d.isToday ? 'stub--now' : ''}`} href=${`#/today/${d.iso}`}>
+        <div class="day__head">
+          <span class="day__when">
+            <span class="day__n">Day ${d.n}</span>
+            <span class="day__date">
+              ${date?.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+            </span>
+          </span>
+          <span class="day__where">
+            ${d.chain.length
+              ? d.chain.map((c, i) => html`
+                  <span class="day__hop" key=${c.id}>
+                    ${i > 0 && html`<span class="day__arrow" aria-hidden="true">→</span>`}
+                    <${Flag} city=${c} /><span class="truncate">${c.name}</span>
+                  </span>`)
+              : html`<span class="muted">In transit</span>`}
+            ${d.isToday && html`<${Badge} kind="now">today<//>`}
+          </span>
+        </div>
+
+        ${moving && html`
+          <div class="day__legs">
+            ${d.legs.map((l) => html`
+              <span class="day__leg" key=${l.id}>
+                <${Icon} name=${modeIcon(l.mode)} />
+                <span class="truncate">${l.from || '?'} → ${l.to || '?'}</span>
+                <span class="day__time">${fmtLocalTime(l.departDateTime) || ''}</span>
+              </span>`)}
+          </div>`}
+
+        <div class="day__marks">
+          <span class=${`day__mark ${d.stay ? '' : 'day__mark--none'}`}>
+            <${Icon} name="bed-double" />
+            <span class="truncate">${d.stay ? shortStay(d.stay) : 'no bed booked'}</span>
+            ${d.stay && d.checkIn?.id === d.stay.id && html`<span class="badge">check in</span>`}
+          </span>
+
+          ${d.checkOut && d.checkOut.id !== d.stay?.id && html`
+            <span class="day__mark">
+              <${Icon} name="luggage" />
+              <span class="truncate">out of ${shortStay(d.checkOut)}</span>
+            </span>`}
+
+          ${d.due.length > 0 && html`
+            <span class="day__mark">
+              <${Icon} name="list-checks" />${plural(d.due.length, 'task')} due
+            </span>`}
+
+          ${d.spent > 0 && html`
+            <span class="day__mark">
+              <${Icon} name="wallet" /><${Money} amount=${d.spent} currency=${home} />
+            </span>`}
+        </div>
+      </a>
+    </div>`;
+}
+
+/* Two readings of one route. Buttons rather than links: this changes how the
+   page is drawn, not where you are, so it must not push a history entry. */
+function LensSwitch({ lens, onPick, stops, days }) {
+  const opt = (id, label, count) => html`
+    <button class=${`lens__opt ${lens === id ? 'lens__opt--on' : ''}`}
+            aria-pressed=${String(lens === id)} onClick=${() => onPick(id)}>
+      ${label} <span class="lens__count">${count}</span>
+    </button>`;
+
+  return html`
+    <div class="lens" role="group" aria-label="How to read the route">
+      ${opt('stop', 'By stop', stops)}
+      ${opt('day', 'By day', days)}
+    </div>`;
 }
 
 /* F8: every stop shows the same columns. A figure that vanishes when it is

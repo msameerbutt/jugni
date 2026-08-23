@@ -255,6 +255,95 @@ function goto(route) {
     console.log('  ok    legacy #/cities and #/destination still resolve');
   }
 
+  /* The Route screen's by-day lens.
+
+     The route walk above cannot reach it: the lens defaults to "by stop", so
+     the day rows are a branch that never renders during a normal pass — the
+     same shape of hole that once let a broken component ship because the only
+     screen that drew it depended on the calendar. Drive the real control and
+     assert on what comes out, so this holds whether or not the trip has
+     started. */
+  {
+    await goto('overview');
+    const opts = [...doc.querySelectorAll('.lens__opt')];
+    const byDay = opts.find((b) => /by day/i.test(b.textContent || ''));
+    /* The empty shell has no route to read either way — nothing to assert. */
+    const hasRoute = !!doc.querySelector('.thread');
+
+    if (!hasRoute) {
+      console.log('  --    by-day lens: no trip loaded, nothing to read by day');
+    } else if (opts.length !== 2 || !byDay) {
+      fail(`route screen: expected a two-way lens switch, found ${opts.length} option(s)`);
+    } else if (doc.querySelectorAll('.dayrow').length) {
+      fail('route screen: day rows render before the by-day lens is chosen');
+    } else {
+      byDay.click();
+      await wait(80);
+
+      const rows = [...doc.querySelectorAll('.dayrow')];
+      const baked = JSON.parse(doc.getElementById('jugni-data')?.textContent || '{}');
+      const { startDate, endDate } = baked.trip || {};
+      const expected = startDate && endDate
+        ? Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1 : 0;
+
+      if (expected && rows.length !== expected) {
+        fail(`by-day lens: ${rows.length} day rows for a ${expected}-day trip`);
+      } else if (!rows.length) {
+        fail('by-day lens: chose "By day" and nothing rendered');
+      } else if (byDay.getAttribute('aria-pressed') !== 'true') {
+        fail('by-day lens: the chosen option does not report aria-pressed="true"');
+      } else {
+        /* Each row is a link into that specific day. A row that leads nowhere
+           useful is worse than no row: it reads as a dead control. */
+        const bad = rows.filter((r) =>
+          !/^#\/today\/\d{4}-\d{2}-\d{2}$/.test(r.querySelector('a')?.getAttribute('href') || ''));
+        if (bad.length) {
+          fail(`by-day lens: ${bad.length} day row(s) do not link to a dated Today`);
+        } else {
+          /* …and following one must actually land on that date, not on the
+             real today — the screen is not remounted by a param-only change. */
+          const target = rows.at(-1).querySelector('a').getAttribute('href');
+          const iso = target.split('/').pop();
+          await goto(target.replace(/^#\//, ''));
+          const shown = (doc.querySelector('[data-view]')?.textContent || '').replace(/\s+/g, ' ');
+          if (!new RegExp(`Day\\s+${expected}\\s+of\\s+${expected}`).test(shown)) {
+            fail(`by-day lens: #/today/${iso} did not open day ${expected} of ${expected}`);
+          } else {
+            console.log(`  ok    by-day lens: ${rows.length} day rows, each opening its own day`);
+          }
+        }
+      }
+      /* Leave the lens as it was found, so later assertions see the default.
+         Re-query rather than reusing `opts` — the nodes above belong to a
+         render that has since been diffed away. */
+      await goto('overview');
+      [...doc.querySelectorAll('.lens__opt')]
+        .find((b) => /by stop/i.test(b.textContent || ''))?.click();
+      await wait(60);
+    }
+  }
+
+  /* A rebuilt file must not hide behind a stale saved copy.
+
+     The store prefers localStorage over the baked trip on purpose — reopening
+     must not discard a traveller's edits. The cost is that regenerating with
+     new bookings and reopening shows yesterday's trip while the file contains
+     today's, with nothing on screen saying so. That shipped once and read as
+     "the booking is missing from the build". The data element carries a build
+     stamp; assert it exists and that a mismatch is actually surfaced. */
+  {
+    const el = doc.getElementById('jugni-data');
+    const buildId = el?.getAttribute('data-build') || '';
+    const baked = JSON.parse(el?.textContent?.trim() || '{}');
+    if (baked.trip) {
+      if (!/^[0-9a-f]{12}$/.test(buildId)) {
+        fail(`baked file carries no usable build stamp (data-build=${JSON.stringify(buildId)})`);
+      } else {
+        await checkStaleBuildIsSurfaced(buildId);
+      }
+    }
+  }
+
   /* Cycle 02 C1: no screen may take a semantic colour as its accent — those
      state facts, and a screen tinted with "done" gold is a lie. */
   const SEMANTIC = ['brass', 'rust', 'transit-blue'];
@@ -380,4 +469,60 @@ async function checkConvertedPass(homeCurrency) {
     console.log(`  ok    every primary amount reads in ${homeCurrency}`);
   }
   w.close();
+}
+
+/* Boot a second copy whose localStorage holds a trip saved under a DIFFERENT
+   build, and confirm the app says so rather than quietly serving the old data.
+   Seeding a mismatched build is the whole point, so this cannot reuse
+   `withStorage` — it needs its own seeded map. */
+async function checkStaleBuildIsSurfaced(currentBuild) {
+  const vc = new VirtualConsole();
+  const boot = (seed) => {
+    const map = new Map(Object.entries(seed));
+    const d = new JSDOM(fs.readFileSync(file, 'utf8'), {
+      runScripts: 'dangerously', pretendToBeVisual: true,
+      url: 'file:///jugni3.html', virtualConsole: vc,
+      beforeParse(w) {
+        Object.defineProperty(w, 'localStorage', { configurable: true, value: {
+          getItem: (k) => (map.has(k) ? map.get(k) : null),
+          setItem: (k, v) => map.set(k, String(v)),
+          removeItem: (k) => map.delete(k), clear: () => map.clear(),
+          key: (i) => [...map.keys()][i] ?? null, get length() { return map.size; } } });
+      },
+    });
+    d.window.fetch = () => Promise.reject(new Error('offline'));
+    d.window.scrollTo = () => {};
+    return d.window;
+  };
+
+  const savedTrip = JSON.parse(
+    document_data_of(fs.readFileSync(file, 'utf8')));
+
+  /* (a) Same build — the notice must stay away, or it nags on every load. */
+  const same = boot({ 'jugni.trip.v1': JSON.stringify(savedTrip),
+                      'jugni.build.v1': currentBuild });
+  await new Promise((r) => setTimeout(r, 220));
+  if (same.document.querySelector('.rebuilt')) {
+    fail('rebuild notice shows even though the saved copy is from this same build');
+  }
+  same.close();
+
+  /* (b) Different build — it must be surfaced, with a way to take the data. */
+  const stale = boot({ 'jugni.trip.v1': JSON.stringify(savedTrip),
+                       'jugni.build.v1': '0000deadbeef' });
+  await new Promise((r) => setTimeout(r, 220));
+  const notice = stale.document.querySelector('.rebuilt');
+  if (!notice) {
+    fail('a trip saved under an older build is served silently — the rebuild is invisible');
+  } else if (![...notice.querySelectorAll('button')].some((b) => /load the new/i.test(b.textContent))) {
+    fail('rebuild notice offers no way to load the new data');
+  } else {
+    console.log('  ok    a rebuilt file announces itself instead of hiding behind a stale copy');
+  }
+  stale.close();
+}
+
+function document_data_of(html) {
+  const m = /id="jugni-data"[^>]*>([\s\S]*?)<\/script>/.exec(html);
+  return (m && m[1].trim()) || '{}';
 }

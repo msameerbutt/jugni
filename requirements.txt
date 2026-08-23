@@ -10,3 +10,7 @@ python-dateutil==2.9.0  # tolerant datetime parsing from messy sources
 
 # Build tooling
 jsonschema==4.23.0      # `make validate` — schema shape check (spec §4)
+
+# Tests for the tooling itself (`make test`). The app's own verification is
+# scripts/check.py + scripts/smoke.js, which run the built HTML in jsdom.
+pytest==8.3.3

@@ -61,7 +61,7 @@ def main() -> int:
 
     import subprocess
     out = trip_dir / "jugni.html"
-    src = trip_dir / "input.json"
+    src = paths.trip_input(args.trip)
     return subprocess.call([
         sys.executable, str(paths.ROOT / "scripts" / "build.py"),
         "--input", str(src.relative_to(paths.ROOT)),

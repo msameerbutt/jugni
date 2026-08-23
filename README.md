@@ -17,26 +17,85 @@ Agents start at [`AGENTS.md`](AGENTS.md).
 
 You need **Docker**. Nothing else — no Python, no installs.
 
-1. Drop whatever you have into `raw/` — booking PDFs, photos of tickets,
-   spreadsheets, a `.csv`, screenshots, scribbled notes. Mixed formats are the
-   expected case, not a problem.
-   *Not comfortable with that?* Run your material through any AI tool yourself,
-   get a plain-text summary back, and hand Jugni that one file instead
-   (`FROM=my-summary.txt`). Both paths are supported equally.
+**1. Make the trip.** This is always the first command. It creates the folders
+and tells you what to do next; it does not need anything to exist first.
 
-2. Ask Claude to build your Jugni. It reads `skills/01-intake.md`, runs the
-   extractors, asks you whatever the files did not answer, and writes your trip.
+```
+make generate TRIP=mytrip
+```
 
-   ```
-   make generate TRIP=mytrip
-   ```
+```
+trips/mytrip/
+  raw/      ← put your files here
+  intake/   ← what the agent read out of them
+  input/    ← your trip, as data
+```
 
-3. Open `trips/mytrip/jugni.html`. That is your app — one file, no server, no
-   account, no login. Put it on your phone, open it on a plane.
+**2. Put your material in `trips/mytrip/raw/`** — booking PDFs, photos of
+tickets, spreadsheets, a `.csv`, screenshots, scribbled notes. Mixed formats are
+the expected case, not a problem.
 
-Everything you do in it is stored in the browser. Export any time from **Trip
-data** — you get `output-<yournickname>.json`, which is also how you share:
-a friend imports it and gets their own independent copy of the same trip.
+*Not comfortable with that?* Run your material through any AI tool yourself, get
+a plain-text summary back, and hand Jugni that one file instead
+(`make generate TRIP=mytrip FROM=my-summary.txt`). Both paths are supported
+equally.
+
+**3. Ask Claude to build your Jugni.** It reads
+[`skills/01-intake.md`](skills/01-intake.md), runs the same command again to
+extract everything, asks you whatever the files did not answer, then follows
+[`skills/02-convert.md`](skills/02-convert.md) to write your trip.
+
+```
+make generate TRIP=mytrip
+```
+
+**4. Open `trips/mytrip/jugni.html`.** That is your app — one file, no server,
+no account, no login. Put it on your phone, open it on a plane.
+
+### After the first run, `raw/` is an inbox
+
+Once a file has been read, its text lives in `trips/mytrip/intake/` and **the
+agent works from there, not from your original**. So you can move consumed files
+out of `raw/` to keep it clear — nothing is lost, and the next run is faster
+because unchanged files are not read twice.
+
+- **New details later?** Drop the new file into `raw/` and run
+  `make generate TRIP=mytrip` again. Only the new file is read; everything
+  already extracted stays.
+- **A booking changed?** Replace the file with the updated one. Intake notices
+  the contents differ and re-reads just that file.
+- Files you take out are marked `archived` in the extracts, so the agent knows
+  the text is all that is left of them.
+
+**Keep your originals somewhere.** The extract is text only — a boarding pass
+barcode, a QR code and the page layout do not survive it, and each booking in
+your trip names the document it came from. Move them to a folder of your own
+rather than deleting them.
+
+### Rebuilding from an export
+
+Everything you do in the app is stored in your browser. Export any time from
+**Trip data** — you get `output-<yournickname>.json`. That is also how you
+share: a friend imports it and gets their own independent copy.
+
+Drop an export back into `trips/mytrip/input/` to rebuild the app with that
+state baked in, instead of going back to the original trip:
+
+```
+trips/mytrip/input/
+  default.json     the trip itself — what `make generate` writes, and what builds by default
+  input1.json      an export you dropped back in
+  input2.json      another one
+```
+
+```
+make build TRIP=mytrip                  # builds input/default.json
+make build TRIP=mytrip NAME=input1      # builds input/input1.json instead
+```
+
+`NAME=` picks the file; leave it off and you get `default.json`. Both write to
+`trips/mytrip/jugni.html`, so add `OUT=trips/mytrip/other.html` if you want to
+keep the two side by side.
 
 ## If you are working on Jugni itself
 
@@ -47,11 +106,15 @@ that is a project rule, not a preference. See AGENTS.md.
 make help                 # all targets
 make build                # bundle src/ into one self-contained file
 make check                # verify it: JS parses, runs offline in jsdom, no remote assets
+make test                 # tooling tests: path/input resolution, intake accumulation
 make icons                # vendor icon/flag SVGs from the image into src/icons/
-make validate TRIP=x      # check a trip's input.json against the schema
+make validate TRIP=x      # check a trip's input file against the schema
 make shell                # a shell inside the container
 make run CMD="..."        # anything else, inside the container
 ```
+
+`make check` verifies the built app; `make test` verifies the Python that
+produces it. Neither is optional before calling something done.
 
 Source stays multi-file and readable — `src/css` numbered by load order,
 `src/app` as Preact + htm ES modules bundled by esbuild. "Single file"
@@ -64,9 +127,24 @@ default.json  standard checklist categories and items merged into every trip
 feedback/     review cycles, originals kept verbatim
 scripts/      Python build tooling
 src/icons/ vendored Lucide icons + circle-flags, with their licences
-raw/       your trip's raw data — gitignored, contains real PII
-trips/     generated trips and built apps — gitignored
+tests/     pytest for the tooling — `make test`
+trips/     one folder per trip — gitignored, contains real PII
 docs/      the spec
+```
+
+Each trip owns its whole working set; nothing is shared between trips:
+
+```
+trips/<slug>/
+  raw/                 inbox — you drop files here, and may empty it once read
+  intake/
+    text/              one extract per file read
+    extracts.md        what the Convert Skill reads
+    manifest.json      what has been read, and whether the original is still in raw/
+  input/
+    default.json       the trip
+    input1.json        an export dropped back in
+  jugni.html           the built app
 ```
 
 ## What it does that a notes app does not

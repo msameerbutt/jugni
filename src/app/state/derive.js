@@ -1,6 +1,6 @@
 /* Derived views over the trip. Nothing here is stored — it is all computed,
    so there is never a second copy to keep in sync. */
-import { day, dayDiff, inRange, sortBy, todayISO, pct } from '../lib/util.js';
+import { day, dayDiff, inRange, sortBy, todayISO, addDays, pct } from '../lib/util.js';
 
 export const primaryTraveler = (s) =>
   s.travelers.find((t) => t.role === 'primary') || s.travelers[0] || null;
@@ -248,4 +248,58 @@ export function extrasForDate(s, iso) {
   const city = cityOn(s, iso);
   if (!city) return [];
   return s.extras.filter((x) => x.cityId === city.id);
+}
+
+/* ---------- The trip, day by day ----------
+
+   Grouped by stop, the route answers "how long are we in Berlin". Grouped by
+   day it answers "what happens on the 18th" — which is the question the
+   traveller's own planning spreadsheet was laid out to answer, a row per day
+   from DAY0 to the flight home. Both are the same records read two ways;
+   nothing here is stored, so the two lenses cannot disagree. */
+export function tripDays(s, iso = todayISO()) {
+  const total = totalDays(s);
+  if (!s.trip.startDate || !total || total < 1) return [];
+  const today = day(iso);
+
+  const ordered = citiesInOrder(s);
+
+  return Array.from({ length: total }, (_, i) => {
+    const date = addDays(s.trip.startDate, i);
+    /* Every stop the date touches, in route order. A stop's departDate is the
+       next stop's arriveDate, so a moving day legitimately belongs to two —
+       or to three on the Budapest → Bratislava → Vienna run. `cityOn` answers
+       with the first match, which is the city being LEFT: fine for "you are
+       in" on Today, wrong for a row that also names the bed you sleep in that
+       night. Carry the whole chain and let the row show the movement. */
+    const chain = ordered.filter((c) =>
+      inRange(date, c.arriveDate, c.departDate || c.arriveDate));
+
+    return {
+      iso: date,
+      n: i + 1,
+      chain,
+      /* Where the day ends up — the one that agrees with the night's stay. */
+      city: chain.at(-1) || cityOn(s, date),
+      legs: legsOn(s, date),
+      /* Where you sleep THAT NIGHT: check-in day included, check-out day not.
+         On a day you move between cities both stays touch the date, and the
+         bed that matters is the one you are heading to. `stayOn` keeps the
+         inclusive reading because on a check-out morning Today should still
+         show the address you are standing in. */
+      stay: s.stays.find((x) => x.checkIn && x.checkOut
+        && day(x.checkIn) <= date && date < day(x.checkOut)) || null,
+      /* The stays themselves, not flags. On a moving day two different
+         properties are in play — checking out of Berlin, into Copenhagen —
+         and a bare "check in · check out" pair next to one name reads as
+         though both happen at that one hotel. */
+      checkIn: s.stays.find((x) => day(x.checkIn) === date) || null,
+      checkOut: s.stays.find((x) => day(x.checkOut) === date) || null,
+      due: dueOn(s, date),
+      spent: s.expenses.filter((e) => day(e.date) === date)
+        .reduce((sum, e) => sum + (e.homeAmount || 0), 0),
+      isToday: date === today,
+      isPast: date < today,
+    };
+  });
 }

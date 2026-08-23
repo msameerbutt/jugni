@@ -37,7 +37,7 @@ when the `Dockerfile` changes in a way the cache might miss.
 | Target | What it does |
 |---|---|
 | `make build` | Bundle `src/` into one self-contained file. `TRIP=<slug>` bakes that trip's data in; without an `input.json` you get the generic empty shell. |
-| `make generate` | Run intake over `raw/` (or `FROM=summary.txt`), write extracts, then merge a Convert candidate into `input.json` and build. |
+| `make generate` | Run intake over `raw/` (or `FROM=summary.txt`), write extracts, then merge a Convert candidate into `input.json` and build. Intake **accumulates**: a file is extracted once (matched by content hash), and an original taken out of `raw/` keeps its extract, marked `archived`. |
 | `make icons` | Vendor icon/flag SVGs from the image into `src/icons/`. `FLAGS=all` for every flag. |
 | `make check` | **Verify** a built file: parse the bundle, then run it in jsdom with `fetch` rejecting. Not optional. |
 | `make validate` | Check an `input.json` against the schema shape (§4) before building. |
@@ -60,7 +60,12 @@ Variables: `TRIP=<slug>` (default `default`), `INPUT=`, `OUT=`, `FROM=`.
                icons/      manifests + vendored SVGs (committed)
 default.json The standard checklist catalogue merged into every trip (§4)
 /scripts/    Python build tooling
-/raw/        A trip's raw data — gitignored (§4 security boundary)
+/raw/        A trip's raw data — gitignored (§4 security boundary).
+             An inbox, not an archive: intake reads each file once and keeps
+             the extract, so a consumed original can be filed away elsewhere.
+             Keep the originals somewhere — the extract is text only, so
+             barcodes, QR codes and layout do not survive it, and every
+             `sourceFile` in input.json points at the document by name.
 /trips/      Generated input.json / output / built app per trip — gitignored
 /docs/       The spec and related docs
 Makefile  Dockerfile  docker-compose.yml  AGENTS.md

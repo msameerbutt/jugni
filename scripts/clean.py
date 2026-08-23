@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """`make clean` — remove build artifacts only.
 
-Never touches raw/ or a trip's input.json: those are the irreplaceable parts.
+Never touches raw/, intake/ or input/: those are the irreplaceable parts.
 """
 
 import argparse
@@ -32,7 +32,7 @@ def main() -> int:
         removed.append(str(intake.relative_to(paths.ROOT)) + "/")
 
     print("clean: removed " + (", ".join(removed) if removed else "nothing"))
-    print("       raw/ and input.json left alone.")
+    print("       raw/, intake/ and input/ left alone.")
     return 0
 
 

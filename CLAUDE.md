@@ -169,6 +169,18 @@ Recorded so they are not rediscovered:
 - **`raw/` PDFs vary wildly.** Some state the charged currency explicitly
   (Copenhagen: DKK, AUD "just an estimate"); some itemise in AUD. Read the
   document, do not pattern-match.
+- **localStorage shadows a rebuilt file.** `Store.init` prefers the saved copy
+  over the baked trip on purpose, so reopening never discards a traveller's
+  edits — but that also means regenerating with new bookings and opening the
+  file in the same browser shows the OLD trip, with the new data sitting
+  unused in the very file being read. This was reported as "Prague and Vienna
+  show no booking at all in the final html" when both were present in the
+  build. `make check`ing the file proves nothing here: a fresh jsdom has empty
+  storage and always sees the baked copy. The build now stamps
+  `data-build="<sha12>"` on `#jugni-data`, the store records it beside the
+  trip, and a mismatch raises an offer to load the new data — never an
+  automatic swap, which would destroy ticked tasks and logged spend. When a
+  regeneration "does not show up", check storage before checking the build.
 
 ---
 

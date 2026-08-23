@@ -20,11 +20,15 @@ RUN := $(COMPOSE) run --rm jugni
 STAMP := .make/image.stamp
 
 TRIP  ?= default
-INPUT ?= trips/$(TRIP)/input.json
+# Which file under trips/<slug>/input/ to build. `default` is the trip itself;
+# an exported copy dropped back in as input1.json is built with NAME=input1.
+NAME  ?= default
+# An explicit path, when you want to point at a file outside the trip layout.
+INPUT ?=
 OUT   ?= trips/$(TRIP)/jugni.html
 FROM  ?=
 
-.PHONY: help build check icons generate update validate shell run down rebuild image clean
+.PHONY: help build check icons generate update validate test shell run down rebuild image clean
 
 help: ## Show this help
 	@echo "Jugni — make targets (all run inside Docker)"
@@ -32,7 +36,8 @@ help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[1m%-12s\033[0m %s\n", $$1, $$2}'
 	@echo
-	@echo "Variables:  TRIP=<slug> (default: $(TRIP))   INPUT=<path>   OUT=<path>   FROM=<raw dir or file>"
+	@echo "Variables:  TRIP=<slug> (default: $(TRIP))   NAME=<input file, default: default>"
+	@echo "            INPUT=<explicit path>   OUT=<path>   FROM=<raw dir or file>"
 
 $(STAMP): Dockerfile docker-compose.yml requirements.txt
 	@mkdir -p .make
@@ -41,8 +46,8 @@ $(STAMP): Dockerfile docker-compose.yml requirements.txt
 
 image: $(STAMP) ## Build the tooling image if its inputs changed
 
-build: image ## Bundle src/ into a single self-contained app file (empty shell unless INPUT exists)
-	$(RUN) python scripts/build.py --input "$(INPUT)" --out "$(OUT)"
+build: image ## Bundle src/ into one self-contained app file (NAME=<input> to pick a different input)
+	$(RUN) python scripts/build.py --trip "$(TRIP)" --name "$(NAME)" --input "$(INPUT)" --out "$(OUT)"
 
 check: image ## Verify a built file: JS parses, no external assets, no unreplaced placeholders
 	$(RUN) python scripts/check.py --file "$(OUT)"
@@ -50,17 +55,17 @@ check: image ## Verify a built file: JS parses, no external assets, no unreplace
 icons: image ## Vendor icon/flag SVGs from the image into src/icons/ (FLAGS=all for every flag)
 	$(RUN) python scripts/icons.py --flags "$(FLAGS)"
 
-generate: image ## Intake+Convert raw data into input.json, then build that trip's app
-	$(RUN) python scripts/generate.py --trip "$(TRIP)" --from "$(FROM)"
-	$(MAKE) --no-print-directory validate TRIP=$(TRIP)
-	$(MAKE) --no-print-directory build TRIP=$(TRIP)
+generate: image ## Step one for a trip: make its folders, then read raw/ into intake and build
+	$(RUN) python scripts/generate.py --trip "$(TRIP)" --from "$(FROM)" --name "$(NAME)"
+	$(MAKE) --no-print-directory validate TRIP=$(TRIP) NAME=$(NAME)
+	$(MAKE) --no-print-directory build TRIP=$(TRIP) NAME=$(NAME)
 	$(MAKE) --no-print-directory check TRIP=$(TRIP)
 
 update: image ## Re-apply reviewed-and-locked Skills and rebuild only what changed
 	$(RUN) python scripts/update.py --trip "$(TRIP)"
 
-validate: image ## Check an input.json against the schema shape (spec §4)
-	$(RUN) python scripts/validate.py --input "$(INPUT)"
+validate: image ## Check a trip's input file against the schema shape (spec §4)
+	$(RUN) python scripts/validate.py --trip "$(TRIP)" --name "$(NAME)" --input "$(INPUT)"
 
 shell: image ## Interactive shell inside the container
 	$(RUN) bash
@@ -76,5 +81,8 @@ rebuild: ## Force a clean image rebuild (no cache)
 	$(COMPOSE) build --no-cache jugni
 	@touch $(STAMP)
 
-clean: ## Remove build artifacts (never touches raw/ or a trip's input.json)
+clean: ## Remove build artifacts (never touches raw/, intake/ or input/)
 	$(RUN) python scripts/clean.py --trip "$(TRIP)"
+
+test: image ## Run the tooling tests (paths, intake accumulation)
+	$(RUN) python -m pytest

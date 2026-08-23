@@ -38,7 +38,8 @@ async function backfillRates() {
 
 function start() {
   const dataEl = document.getElementById('jugni-data');
-  Store.init(readEmbedded('jugni-data'), readEmbedded('jugni-defaults'));
+  Store.init(readEmbedded('jugni-data'), readEmbedded('jugni-defaults'),
+             dataEl?.getAttribute('data-build') || '');
   Store.setReadonly(dataEl?.getAttribute('data-mode') === 'readonly');
 
   if (Store.isReadonly()) {

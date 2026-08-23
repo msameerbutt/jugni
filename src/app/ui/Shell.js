@@ -2,8 +2,8 @@ import { html } from '../lib/html.js';
 import { Icon } from '../lib/icons.js';
 import { Rail, SCREENS, accentFor } from './Nav.js';
 import { SheetHost, ToastHost } from './Sheet.js';
-import { useRoute, useEffect, useRef } from './hooks.js';
-import { useTrip, isReadonly } from '../state/store.js';
+import { useRoute, useEffect, useRef, useState } from './hooks.js';
+import { useTrip, isReadonly, getStaleBuild } from '../state/store.js';
 import * as D from '../state/derive.js';
 import * as A from '../actions.js';
 
@@ -76,6 +76,8 @@ export function App() {
           </a>
         </header>
 
+        <${RebuiltNotice} />
+
         <div class="wrap view" data-view=${name} data-accent=${accentFor(name)} key=${name}>
           <${Screen} state=${state} param=${route.param} />
         </div>
@@ -83,6 +85,34 @@ export function App() {
 
       <${SheetHost} />
       <${ToastHost} />
+    </div>`;
+}
+
+/* This file was rebuilt from newer trip data than the copy saved in this
+   browser — regenerated with bookings that were not in the last build, say.
+
+   It has to be an offer rather than an automatic swap: the saved copy holds
+   ticked tasks and logged spend that the rebuild has never seen, and silently
+   replacing them would be the worse bug. But saying nothing is what makes a
+   freshly generated booking appear to be missing, so it cannot be silent
+   either. */
+function RebuiltNotice() {
+  const [dismissed, setDismissed] = useState(false);
+  const stale = getStaleBuild();
+  if (!stale || dismissed || isReadonly()) return null;
+
+  return html`
+    <div class="rebuilt" role="status">
+      <${Icon} name="info" />
+      <p class="rebuilt__text">
+        This file was built with newer trip data than the copy saved in this
+        browser. Anything you have changed here is still safe — loading the new
+        data replaces it.
+      </p>
+      <div class="rebuilt__actions">
+        <button class="btn btn--primary" onClick=${A.restoreBuilt}>Load the new data</button>
+        <button class="btn btn--ghost" onClick=${() => setDismissed(true)}>Keep mine</button>
+      </div>
     </div>`;
 }
 
