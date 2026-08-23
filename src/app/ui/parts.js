@@ -1,7 +1,7 @@
 /* Pieces used by more than one screen. */
 import { html } from '../lib/html.js';
 import { Icon, Flag, modeIcon } from '../lib/icons.js';
-import { HomeMoney, Badge } from './components.js';
+import { HomeMoney, Badge, CopyButton } from './components.js';
 import { useState, usePrefersReducedMotion } from './hooks.js';
 import * as A from '../actions.js';
 import * as D from '../state/derive.js';
@@ -101,7 +101,11 @@ export function LegCard({ leg, eyebrow }) {
     <div class="stub stub--now">
       <div class="widget__head" style="margin-bottom:var(--space-3)">
         <span class="eyebrow">${eyebrow || 'Next leg'}</span>
-        ${leg.bookingRef && html`<${Badge}>ref ${leg.bookingRef}<//>`}
+        ${leg.bookingRef && html`
+          <span class="copyrow">
+            <${Badge}>ref ${leg.bookingRef}<//>
+            <${CopyButton} value=${leg.bookingRef} label=${`booking reference ${leg.bookingRef}`} />
+          </span>`}
       </div>
       <div class="next-leg">
         <span class="next-leg__pt">
@@ -132,7 +136,11 @@ export function LegLine({ leg, boxed }) {
       <span class="leg__time faint">
         ${fmtLocalDateTime(leg.departDateTime)}${leg.arriveDateTime ? ` – ${fmtLocalTime(leg.arriveDateTime)}` : ''}
       </span>
-      ${leg.bookingRef && html`<${Badge}>ref ${leg.bookingRef}<//>`}
+      ${leg.bookingRef && html`
+        <span class="copyrow">
+          <${Badge}>ref ${leg.bookingRef}<//>
+          <${CopyButton} value=${leg.bookingRef} label=${`booking reference ${leg.bookingRef}`} />
+        </span>`}
       ${leg.cost > 0 && html`
         <${HomeMoney} amount=${leg.cost} currency=${leg.currency}
                       home=${getState().trip.homeCurrency}

@@ -54,6 +54,26 @@
 .btn[disabled] { opacity: .45; cursor: not-allowed; }
 .btn .icon { font-size: 1.05em; }
 
+/* ---------- Copy button ---------- */
+
+.copybtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: none; width: 1.7em; height: 1.7em; border-radius: var(--radius-sm);
+  color: var(--ink-faint);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.copybtn .icon { font-size: .85em; }
+.copybtn:hover { background: var(--surface-sunk); color: var(--ink-soft); }
+.copybtn[data-state="copied"] { color: var(--brass); }
+.copybtn[data-state="failed"] { color: var(--rust); }
+.copybtn--labelled {
+  width: auto; height: auto; gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line); font-size: var(--step--1);
+}
+.copyrow { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.copyrow > :first-child { min-width: 0; }
+
 /* ---------- Badges, chips ---------- */
 
 .badge {

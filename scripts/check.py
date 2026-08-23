@@ -17,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.lib import paths
+from scripts.lib.lint_components import check as lint_components
 
 # Endpoints the live widgets are *supposed* to call at runtime (spec §8).
 ALLOWED_HOSTS = {
@@ -47,6 +48,19 @@ def main() -> int:
     rel = path.relative_to(paths.ROOT) if path.is_relative_to(paths.ROOT) else path
     print(f"check {rel}  ({len(html.encode('utf-8')) / 1024:.0f} KB)")
     failures = []
+
+    # --- 0. every htm component reference resolves ---
+    # An unimported component (`<${Foo}` with no `Foo` import or local
+    # declaration) compiles fine — esbuild has no way to know it was meant to
+    # be a binding — and only throws at runtime, in whichever branch happens
+    # to render it. Checked against the SOURCE, once, rather than per build:
+    # it does not depend on which trip's data is baked in, so there's no
+    # reason to repeat it for every TRIP the way the other checks do.
+    component_problems = lint_components(paths.SRC / "app")
+    if component_problems:
+        failures.extend(component_problems)
+    else:
+        print("  ok    every <${Component}> reference resolves")
 
     # --- 1. does the bundled JS actually parse? ---
     scripts = re.findall(r"<script>(.*?)</script>", html, re.S)

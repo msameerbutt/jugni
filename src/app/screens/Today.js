@@ -1,6 +1,6 @@
 import { html } from '../lib/html.js';
 import { Icon, Flag } from '../lib/icons.js';
-import { Stat, Money, Meter, Empty, Section, PageHead, Stamp, Fold } from '../ui/components.js';
+import { Stat, Money, Meter, Empty, Section, PageHead, Stamp, Fold, CopyButton } from '../ui/components.js';
 import { TaskRow, LegCard, AlertBlock } from '../ui/parts.js';
 import { useState, useAsync } from '../ui/hooks.js';
 import * as D from '../state/derive.js';
@@ -178,9 +178,13 @@ function DayView({ state, viewDate }) {
           <div class="row__body">
             <strong>${stay.name}</strong>
             <div class="row__meta small muted">
-              ${stay.address && html`<span class="truncate">${stay.address}</span>`}
+              ${stay.address && html`
+                <span class="copyrow"><span class="truncate">${stay.address}</span>
+                  <${CopyButton} value=${stay.address} label="address" /></span>`}
               <span class="tkt">${fmtRange(stay.checkIn, stay.checkOut)}</span>
-              ${stay.confirmationNumber && html`<span class="tkt">ref ${stay.confirmationNumber}</span>`}
+              ${stay.confirmationNumber && html`
+                <span class="copyrow tkt">ref ${stay.confirmationNumber}
+                  <${CopyButton} value=${stay.confirmationNumber} label="confirmation number" /></span>`}
             </div>
           </div>
         </div>`}

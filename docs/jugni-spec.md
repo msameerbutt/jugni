@@ -685,6 +685,14 @@ trip-tracking apps quietly die by day 2 or 3.
   while viewing another date uses the viewed date, shown in the sheet so it
   is never a surprise — someone scrolling back is usually catching up on a
   receipt they forgot.
+- **Copy-to-clipboard on the details worth retyping.** A booking reference,
+  a confirmation number, an address — these get retyped into an airline app,
+  read out at a hotel desk, or pasted into a taxi app. Each carries a small
+  copy button next to it (Route, a destination's stay card, Today's day view).
+  The async Clipboard API needs a secure context, which `file://` is not
+  guaranteed to be, so a hidden-textarea fallback covers where it is
+  unavailable — this is not an edge case for a file opened the way spec §8
+  describes, it is the normal one.
 - **Quick-capture, not a form.** Adding an expense from Today should be a
   2-tap flow — amount + category — with today's date and current city
   defaulted automatically. This matters more than it sounds: bringing *new*

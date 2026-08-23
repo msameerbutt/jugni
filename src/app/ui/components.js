@@ -4,7 +4,62 @@ import { html } from '../lib/html.js';
 import { Icon } from '../lib/icons.js';
 import { moneyParts, pct as pctOf } from '../lib/util.js';
 import { useRates, toHome } from '../data/rates.js';
-import { useState, useEffect, useRef, usePref, usePrefersReducedMotion } from './hooks.js';
+import { useState, useEffect, useRef, useCallback, usePref, usePrefersReducedMotion } from './hooks.js';
+
+/* ---------- Copy to clipboard ----------
+   For the details a traveller actually has to retype somewhere else — a
+   booking reference into an airline app, a confirmation number at a hotel
+   desk, an address into a taxi app. The async Clipboard API needs a secure
+   context, which file:// is not guaranteed to be (spec §8's normal case), so
+   a hidden-textarea fallback covers where it is unavailable or refused. */
+async function writeClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    try { await navigator.clipboard.writeText(text); return true; }
+    catch { /* permission denied or insecure context — fall through */ }
+  }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/* Icon-only by default so it drops beside existing text without disturbing
+   layout; pass `children` for a labelled variant (address blocks). */
+export function CopyButton({ value, label, children, class: cls = '' }) {
+  const [state, setState] = useState('idle');   // idle | copied | failed
+
+  const onClick = useCallback(async (e) => {
+    e.preventDefault();
+    e.stopPropagation();   // several call sites sit inside a linked card
+    if (!value) return;
+    const ok = await writeClipboard(String(value));
+    setState(ok ? 'copied' : 'failed');
+    setTimeout(() => setState('idle'), 1600);
+  }, [value]);
+
+  if (!value) return null;
+
+  return html`
+    <button type="button" class=${`copybtn ${children ? 'copybtn--labelled' : ''} ${cls}`}
+            onClick=${onClick} data-state=${state}
+            aria-label=${children ? undefined : `Copy ${label || value}`}>
+      <${Icon} name=${state === 'failed' ? 'x' : state === 'copied' ? 'check' : 'copy'} />
+      ${children}
+      <span class="visually-hidden" role="status">
+        ${state === 'copied' ? 'Copied to clipboard' : state === 'failed' ? 'Could not copy' : ''}
+      </span>
+    </button>`;
+}
 
 /* ---------- Money: the code is always stated (F15) ---------- */
 export function Money({ amount, currency, class: cls = '' }) {

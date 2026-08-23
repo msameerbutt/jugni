@@ -9,7 +9,7 @@
 import { html } from '../lib/html.js';
 import { Icon, Flag } from '../lib/icons.js';
 import { Stat, Money, HomeMoney, Empty, Section, PageHead, Stamp, Badge,
-         Fold, FoldControls, Carousel } from '../ui/components.js';
+         Fold, FoldControls, Carousel, CopyButton } from '../ui/components.js';
 import { TaskRow, ExpenseRow, LegLine, CityTitle, ForecastDay, Extra } from '../ui/parts.js';
 import { useAsync } from '../ui/hooks.js';
 import * as D from '../state/derive.js';
@@ -254,13 +254,19 @@ function StayCard({ stay, state }) {
         <span class="stop__city">${stay.name}</span>
         <span class="stop__dates">${fmtRange(stay.checkIn, stay.checkOut)}</span>
       </div>
-      ${stay.address && html`<p class="small muted wrap-anywhere">${stay.address}</p>`}
+      ${stay.address && html`
+        <p class="small muted copyrow">
+          <span class="wrap-anywhere">${stay.address}</span>
+          <${CopyButton} value=${stay.address} label="address" />
+        </p>`}
 
       <div class="stop__facts">
         <span class="fact">
           <span class="fact__k">Confirmation</span>
-          <span class=${`fact__v wrap-anywhere ${stay.confirmationNumber ? '' : 'fact__v--zero'}`}>
-            ${stay.confirmationNumber || '—'}
+          <span class=${`fact__v wrap-anywhere ${stay.confirmationNumber ? '' : 'fact__v--zero'} copyrow`}>
+            <span>${stay.confirmationNumber || '—'}</span>
+            ${stay.confirmationNumber && html`
+              <${CopyButton} value=${stay.confirmationNumber} label="confirmation number" />`}
           </span>
         </span>
         <span class="fact">

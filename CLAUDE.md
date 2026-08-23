@@ -128,6 +128,20 @@ Recorded so they are not rediscovered:
 - **Full-`innerHTML` re-rendering** was the root cause of four cycle-01
   complaints — no exit animations, lost scroll and open/closed state. Replaced
   with Preact + htm in cycle 01. Do not reintroduce it.
+- **A `sed`-style `.replace()` on an import line silently no-ops if an
+  earlier edit already changed that exact string** — and an unimported htm
+  component (`<${Foo}` with no `Foo` binding) compiles cleanly and only throws
+  at runtime, in whichever branch happens to render it. This shipped twice in
+  one sitting (copy-to-clipboard feature): once caught immediately by
+  `make check`, once missed because the euro2026 fixture's trip hadn't started
+  yet on the real system date, so the branch that crashed was never rendered
+  during the walk. The second one was luck, not coverage. `make check` now
+  runs `scripts/lint_components.py` first, which statically resolves every
+  `<${Component}>` against that file's imports and local declarations —
+  independent of which trip's data is loaded, so it can't depend on the
+  calendar the way the route walk does. When editing an import line, prefer
+  `Edit`'s exact-match semantics (which fails loudly) over a broad `sed`
+  replace against remembered-but-unverified source text.
 - **`matchMedia` is a bare identifier**, so `matchMedia?.()` still throws a
   ReferenceError where it is undefined (jsdom). Use `globalThis.matchMedia?.()`.
   The same applies to any browser global the smoke test host may lack.

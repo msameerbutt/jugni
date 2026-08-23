@@ -27,6 +27,7 @@ bus
 circle-dot
 
 # --- Actions ---
+copy
 plus
 pencil
 trash-2
