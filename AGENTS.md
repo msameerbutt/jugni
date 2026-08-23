@@ -38,6 +38,8 @@ when the `Dockerfile` changes in a way the cache might miss.
 |---|---|
 | `make build` | Bundle `src/` into one self-contained file. `TRIP=<slug>` bakes that trip's data in; without an `input.json` you get the generic empty shell. |
 | `make generate` | Run intake over `raw/` (or `FROM=summary.txt`), write extracts, then merge a Convert candidate into `input.json` and build. |
+| `make icons` | Vendor icon/flag SVGs from the image into `src/icons/`. `FLAGS=all` for every flag. |
+| `make check` | **Verify** a built file: parse the bundle, then run it in jsdom with `fetch` rejecting. Not optional. |
 | `make validate` | Check an `input.json` against the schema shape (§4) before building. |
 | `make update` | Report which Skills changed since a trip was generated, and rebuild the shell. Never regenerates data silently. |
 | `make shell` / `make run CMD=` | Anything else, inside the container. |
@@ -50,7 +52,13 @@ Variables: `TRIP=<slug>` (default `default`), `INPUT=`, `OUT=`, `FROM=`.
 ```
 /skills/     Skill instruction files — Intake, Convert, Persona-adapt,
              the persona profiles, the quality bar, skill maintenance
-/src/        App shell source: css/ js/ templates/ fonts/  (multi-file, on purpose)
+/src/        App shell source:
+               css/        numbered — the number IS the load order
+               app/        Preact + htm modules (lib/ state/ data/ ui/ screens/)
+               templates/  the HTML shell
+               fonts/      optional .woff2, embedded at build
+               icons/      manifests + vendored SVGs (committed)
+default.json The standard checklist catalogue merged into every trip (§4)
 /scripts/    Python build tooling
 /raw/        A trip's raw data — gitignored (§4 security boundary)
 /trips/      Generated input.json / output / built app per trip — gitignored
@@ -58,9 +66,13 @@ Variables: `TRIP=<slug>` (default `default`), `INPUT=`, `OUT=`, `FROM=`.
 Makefile  Dockerfile  docker-compose.yml  AGENTS.md
 ```
 
-Source files in `src/css` and `src/js` are numbered. The number **is** the load
-order — `make build` concatenates them in filename order, so a new file's
-number is a real decision, not decoration.
+`src/css` files are numbered: the number **is** the load order, so a new file's
+number is a real decision. `src/app` is bundled by esbuild from `main.js`, so
+imports carry the ordering there.
+
+**The UI runs on Preact + htm** (~5 KB, bundled in). Rendering is diffed, not
+re-generated — that is what allows exit animations, preserved scroll and
+remembered open/closed state. Do not reintroduce full-`innerHTML` rendering.
 
 ## Where the Skills live and how they change
 
@@ -85,8 +97,9 @@ structure. If a design step ends with "the user fills in this field", it is wron
 the same way wrong data is checked. Run `skills/05-quality-bar.md` against the
 built file before saying it is ready.
 
-**Offline-first, assets embedded (§8).** CSS, JS and fonts are inlined into the
-generated file at build time. Never a CDN, never a remote font, never a
+**Offline-first, assets embedded (§8).** CSS, JS, fonts and icons are inlined
+into the generated file at build time. Icons ship as an inline SVG sprite, never
+as base64 images and never from a remote host. Never a CDN, never a remote font, never a
 free-tier host — a host that lapses is how a trip keepsake quietly breaks years
 later. Live widgets call free, no-key APIs directly and always cache their last
 success; a failed call shows cached data with a "last updated" stamp, and a

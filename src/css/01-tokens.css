@@ -1,26 +1,60 @@
-/* Design tokens — spec §11.
-   Roles are stable across themes: brass = progress/done/CTA,
-   transit-blue = links/"you are here", rust = alerts only. */
+/* ============================================================================
+   TWO PALETTES, TWO JOBS — spec §11 as amended by feedback cycle 01 (F1).
+
+   SEMANTIC colours state facts. They are rare, and they never change meaning:
+     brass        progress, done-states, primary actions
+     transit-blue links, "you are here"
+     rust         overdue and alerts, and NOTHING else
+
+   CATEGORICAL hues carry identity, not meaning. A screen or a checklist
+   category gets one, and it appears on section rules, icons and chips —
+   never on a control that does something. That separation is what lets the
+   app be colourful without a coloured button becoming a lie.
+   ========================================================================= */
 
 :root {
   color-scheme: light;
 
+  /* --- Ground ------------------------------------------------------------ */
   --bg:            #EDEEE7;   /* cool stone paper */
   --surface:       #FFFFFF;
+  --surface-2:     #F5F6F0;   /* raised: nested cards */
   --surface-sunk:  #E5E7DE;
-  --ink:           #1B2421;   /* deep ink */
+  --overlay:       #FFFFFF;
+  --ink:           #1B2421;
   --ink-soft:      #5C665F;
+  --ink-faint:     #8A938C;
   --line:          #D6D9CD;
-  --brass:         #A9762C;   /* progress, done-states, CTAs */
-  --transit-blue:  #2C5271;   /* links, "you are here" */
-  --rust:          #A23B2E;   /* overdue / alerts ONLY */
+  --line-strong:   #BFC4B4;
+
+  /* --- Semantic ---------------------------------------------------------- */
+  --brass:         #96661F;
+  --transit-blue:  #2C5271;
+  --rust:          #A23B2E;
+  --on-accent:     #FFFFFF;
 
   --brass-wash:        color-mix(in srgb, var(--brass) 12%, transparent);
   --transit-blue-wash: color-mix(in srgb, var(--transit-blue) 10%, transparent);
   --rust-wash:         color-mix(in srgb, var(--rust) 10%, transparent);
-  --on-accent:         #FFFFFF;
 
-  /* Type — three roles, each earning its job (spec §11). */
+  /* --- Categorical: identity only ---------------------------------------- */
+  --hue-indigo:  #4552A0;
+  --hue-teal:    #10685C;
+  --hue-plum:    #6F3F76;
+  --hue-moss:    #3E6A32;
+  --hue-cyan:    #0F6A7B;
+  --hue-magenta: #8A3269;
+  --hue-slate:   #4A566E;
+  --hue-clay:    #8A4A31;
+  --hue-sage:    #4F6448;
+
+  /* --- Elevation. The old dark theme read flat because it had one surface
+         and no shadow ramp; both themes now have three real levels. -------- */
+  --shadow-1: 0 1px 2px rgba(27,36,33,.05), 0 2px 6px rgba(27,36,33,.04);
+  --shadow-2: 0 2px 6px rgba(27,36,33,.07), 0 8px 24px rgba(27,36,33,.07);
+  --shadow-3: 0 12px 40px rgba(27,36,33,.16);
+
+  /* --- Type -------------------------------------------------------------- */
   --font-display: "Jugni Display", "Archivo Narrow", "Roboto Condensed", "Oswald",
                   "Arial Narrow", system-ui, sans-serif;
   --font-body:    "Jugni Sans", "Inter", -apple-system, BlinkMacSystemFont,
@@ -28,53 +62,80 @@
   --font-mono:    "Jugni Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular,
                   Menlo, Consolas, monospace;
 
-  --step--1: clamp(0.78rem, 0.76rem + 0.1vw, 0.84rem);
+  --step--2: clamp(0.69rem, 0.67rem + 0.08vw, 0.74rem);
+  --step--1: clamp(0.79rem, 0.77rem + 0.1vw,  0.85rem);
   --step-0:  clamp(0.94rem, 0.91rem + 0.15vw, 1rem);
-  --step-1:  clamp(1.1rem, 1.03rem + 0.35vw, 1.28rem);
-  --step-2:  clamp(1.35rem, 1.2rem + 0.7vw, 1.75rem);
-  --step-3:  clamp(1.7rem, 1.4rem + 1.4vw, 2.6rem);
+  --step-1:  clamp(1.09rem, 1.03rem + 0.3vw,  1.25rem);
+  --step-2:  clamp(1.3rem,  1.17rem + 0.62vw, 1.65rem);
+  --step-3:  clamp(1.65rem, 1.38rem + 1.3vw,  2.4rem);
+  --step-4:  clamp(2rem,    1.55rem + 2.2vw,  3.2rem);
 
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
-  --space-7: 3rem;
+  --space-1: .25rem;  --space-2: .5rem;   --space-3: .75rem;
+  --space-4: 1rem;    --space-5: 1.5rem;  --space-6: 2rem;   --space-7: 3rem;
 
-  --radius:    10px;
-  --radius-sm: 6px;
-  --radius-lg: 16px;
+  --radius-sm: 7px;  --radius: 11px;  --radius-lg: 18px;
 
-  --shadow-1: 0 1px 2px rgba(27, 36, 33, 0.06), 0 2px 8px rgba(27, 36, 33, 0.04);
-  --shadow-2: 0 8px 28px rgba(27, 36, 33, 0.12);
+  --rail-w: 254px;
+  --tabbar-h: 64px;
+  --content-max: 1000px;
 
-  --rail-w: 250px;
-  --tabbar-h: 62px;
-  --content-max: 940px;
-
-  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
-  --dur:  260ms;
+  --ease:     cubic-bezier(.22,.61,.36,1);
+  --ease-out: cubic-bezier(.16,1,.3,1);
+  --dur:      240ms;
+  --dur-slow: 420ms;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  --bg:           #14181A;   /* near-black, warmer than pure black */
-  --surface:      #1C2123;
-  --surface-sunk: #101416;
+  --bg:           #101416;
+  --surface:      #191F21;
+  --surface-2:    #212829;   /* raised */
+  --surface-sunk: #0B0E10;
+  --overlay:      #242B2D;
   --ink:          #E9E7DD;
-  --ink-soft:     #9CA39A;
-  --line:         #33393A;
-  --brass:        #C99A4E;
-  --transit-blue: #6FA0C4;
-  --rust:         #D46B57;
+  --ink-soft:     #9DA49B;
+  --ink-faint:    #6E766F;
+  --line:         #2E3537;
+  --line-strong:  #414A4C;
+
+  --brass:        #D6A65B;
+  --transit-blue: #7FB0D4;
+  --rust:         #E0806B;
+  --on-accent:    #101416;
 
   --brass-wash:        color-mix(in srgb, var(--brass) 16%, transparent);
-  --transit-blue-wash: color-mix(in srgb, var(--transit-blue) 14%, transparent);
-  --rust-wash:         color-mix(in srgb, var(--rust) 14%, transparent);
-  --on-accent:        #14181A;
+  --transit-blue-wash: color-mix(in srgb, var(--transit-blue) 15%, transparent);
+  --rust-wash:         color-mix(in srgb, var(--rust) 15%, transparent);
 
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.24);
-  --shadow-2: 0 8px 28px rgba(0, 0, 0, 0.5);
+  /* Lifted for dark surfaces: the light-theme values are unreadable here. */
+  --hue-indigo:  #97A6EE;
+  --hue-teal:    #55CFBB;
+  --hue-plum:    #D3A4DA;
+  --hue-moss:    #90D37C;
+  --hue-cyan:    #5CCADD;
+  --hue-magenta: #EC9CD3;
+  --hue-slate:   #AAB6D2;
+  --hue-clay:    #E5A78C;
+  --hue-sage:    #AECBA5;
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.3);
+  --shadow-2: 0 2px 8px rgba(0,0,0,.5),  0 10px 28px rgba(0,0,0,.42);
+  --shadow-3: 0 16px 48px rgba(0,0,0,.62);
 }
+
+/* Every screen sets --accent to its own hue; anything nested inherits it, so a
+   component is themed by where it sits rather than by being told. */
+[data-accent="indigo"]  { --accent: var(--hue-indigo); }
+[data-accent="teal"]    { --accent: var(--hue-teal); }
+[data-accent="plum"]    { --accent: var(--hue-plum); }
+[data-accent="moss"]    { --accent: var(--hue-moss); }
+[data-accent="cyan"]    { --accent: var(--hue-cyan); }
+[data-accent="magenta"] { --accent: var(--hue-magenta); }
+[data-accent="slate"]   { --accent: var(--hue-slate); }
+[data-accent="clay"]    { --accent: var(--hue-clay); }
+[data-accent="sage"]    { --accent: var(--hue-sage); }
+[data-accent="brass"]   { --accent: var(--brass); }
+
+:root { --accent: var(--brass); }
+[data-accent] { --accent-wash: color-mix(in srgb, var(--accent) 13%, transparent); }

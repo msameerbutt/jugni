@@ -10,8 +10,16 @@ user's side.** The user never edits a schema or a JSON file. All of that
 complexity is pushed onto Claude, guided by instruction files (Skills)
 Jugni ships with. The user talks; the agent structures.
 
+**UI runtime (feedback cycle 01, F17).** The app is built with **Preact + htm**
+(~5 KB, bundled into the output by esbuild) rather than rebuilding the page's
+HTML on every state change. This is not decoration: full re-rendering destroyed
+the DOM node the user was interacting with, which made exit animations
+impossible, lost carousel scroll position and reopened collapsed sections. One
+root cause behind four separate complaints. Keyed diffing removes all four, and
+the single-file, no-server, offline constraints in section 8 are unchanged.
+
 **It must feel like a complete app, not a single scrolling page.** Screens
-(Overview, Checklist, Cities, Expenses, Weather, Destination) are navigated
+(Today, Route, Checklist, Destinations, Expenses, Weather, Recap) are navigated
 between like real pages — distinct views, a persistent nav, transitions —
 even though under the hood it's client-side routing with no server. This
 is also what makes a later Android/iOS wrap (section 7) a packaging change
@@ -105,6 +113,14 @@ remote/hosted dependency.
     (`docker-compose build --no-cache`), for when the `Dockerfile` changes
     in a way the normal cache-aware rebuild might miss.
 
+- `make icons` — vendor the icon and flag SVGs the build embeds
+  (section 8) from the tooling image into `src/icons/`, driven by two plain
+  manifests. Nothing is downloaded on the host.
+- `make check` — verify a built file rather than assuming it: the bundle is
+  parsed, then **run in jsdom with `fetch` stubbed to reject**, so the offline
+  path (section 8/12) is what gets tested. Every route must render, every
+  control must carry a label, every icon reference must resolve, and no remote
+  asset may appear. "It built" and "it works" are different claims.
 - `make build` — assemble the app shell (styles, JS, page templates) into
   the deployable static output. **Source stays multi-file for
   Contributors** (separate CSS/JS/template files — readable, diffable,
@@ -150,12 +166,12 @@ This tooling is a Contributor-side concern. What a Technical Traveler
 
 ```json
 {
-  "trip": { "schemaVersion": "1.0", "name": "", "startDate": "", "endDate": "", "homeCurrency": "", "budget": 0, "notes": "", "theme": "light|dark" },
+  "trip": { "schemaVersion": "1.1", "name": "", "startDate": "", "endDate": "", "homeCurrency": "", "budget": 0, "notes": "", "theme": "light|dark" },
   "travelers": [
     { "id": "", "role": "primary|companion", "personaProfiles": [], "nickname": "", "email": "", "age": 0 }
   ],
   "cities": [
-    { "id": "", "name": "", "country": "", "lat": 0, "lon": 0, "arriveDate": "", "departDate": "", "notes": "" }
+    { "id": "", "name": "", "country": "", "countryCode": "", "lat": 0, "lon": 0, "arriveDate": "", "departDate": "", "notes": "" }
   ],
   "transport": [
     { "id": "", "mode": "flight|train|ferry|car|bus|other", "from": "", "to": "", "departDateTime": "", "arriveDateTime": "", "bookingRef": "", "cost": 0, "currency": "", "notes": "" }
@@ -164,10 +180,10 @@ This tooling is a Contributor-side concern. What a Technical Traveler
     { "id": "", "cityId": "", "name": "", "address": "", "checkIn": "", "checkOut": "", "confirmationNumber": "", "cost": 0, "currency": "", "cancellationDeadline": "", "notes": "" }
   ],
   "checklist": [
-    { "id": "", "task": "", "category": "", "cityId": "", "dueDate": "", "done": false, "completedDate": null }
+    { "id": "", "task": "", "category": "", "cityId": "", "dueDate": "", "done": false, "completedDate": null, "source": "", "note": "" }
   ],
   "expenses": [
-    { "id": "", "label": "", "category": "", "amount": 0, "currency": "", "homeAmount": 0, "homeCurrency": "", "rateSnapshotDate": "", "date": "", "cityId": "" }
+    { "id": "", "label": "", "category": "", "amount": 0, "currency": "", "homeAmount": 0, "homeCurrency": "", "rateSnapshotDate": "", "date": "", "cityId": "", "relatedStayId": "" }
   ],
   "destinationNotes": [
     { "id": "", "cityId": "", "title": "", "body": "" }
@@ -178,10 +194,51 @@ This tooling is a Contributor-side concern. What a Technical Traveler
 }
 ```
 
+**Whose Jugni it is.** The primary traveller's `nickname` renders as a
+possessive beside the wordmark — *Sameer's Jugni* — in the nav, the mobile
+header, and the read-only snapshot banner, where it matters most because
+somebody else is reading it. It falls back to plain "Jugni" when no nickname is
+set, and updates itself on a fork: the moment a companion imports the file and
+enters their own nickname (section 2's fork-customization path), the app stops
+claiming to be someone else's.
+
 `travelers[].role: companion` is a stub for future multi-user linking —
 schema supports it now, linking/sharing logic is not built in v1.
 `travelers[].personaProfiles` is an array — a trip can combine profiles
 (section 5), so a single traveler can too.
+
+**Schema 1.1 additions (feedback cycle 01).** `cities[].countryCode` is ISO
+3166-1 alpha-2 and drives the flag lookup, because the same country arrives
+spelled six different ways across booking platforms. `checklist[].source` marks
+an item instantiated from the standard catalogue (below), so deleting one can
+be remembered instead of undone on the next load — the deleted ids live in a
+top-level `suppressed[]`. `expenses[].relatedStayId` is set when an expense is
+the traveller's share of a group booking, so the split is offered once.
+`extras[].links` gives a fact somewhere to go; see section 12.
+
+**The standard catalogue — `default.json` (feedback cycle 01).** A trip's
+checklist should not be invented from nothing every time. `default.json` at the
+repo root defines the checklist **categories** (id, label, icon, accent) and a
+set of **standard items**, and is merged into every trip at load:
+
+```json
+{ "categories": [ { "id": "personal-care", "label": "Personal care", "icon": "heart-pulse", "accent": "magenta" } ],
+  "checklistDefaults": [ { "id": "shaver", "category": "personal-care", "task": "Pack shaver and toiletries", "appliesTo": "always", "dueOffset": 2 } ] }
+```
+
+`appliesTo` decides whether an item is instantiated: `always`, `persona:<id>`
+(section 5), `country:<name|cc>`, `lat:>60` (a proxy for far-north trips),
+`cities:<n>`, `nights:<n>`. So an Arctic thermal-layer item never appears on a
+beach trip. `dueOffset` is days before departure, since the catalogue cannot
+know a trip's dates; a computed date already in the past becomes today rather
+than being born overdue.
+
+`input.json` may add items and may suppress an instantiated one, but cannot
+redefine a category or rewrite a default's text. That is what makes the
+catalogue authoritative while the traveller's own list stays theirs. A default
+whose meaningful words are already covered by an agent-written task is skipped,
+so "Buy travel insurance" does not appear beside "Buy travel insurance covering
+Schengen and the Arctic leg".
 
 **Data conventions (engineering review addition):**
 - **IDs** are generated once at creation (Contributor tooling can use
@@ -263,7 +320,7 @@ does it fall into `extras`:
 
 ```json
 "extras": [
-  { "id": "", "cityId": "", "title": "", "displayHint": "list|table|text|link|auto", "content": "" }
+  { "id": "", "cityId": "", "title": "", "displayHint": "list|table|text|link|auto", "content": "", "links": [{ "label": "", "url": "" }] }
 ]
 ```
 
@@ -273,6 +330,30 @@ renders `extras` through a small set of adaptive components keyed off
 that hint, so unmodeled data still looks like a native part of the page
 rather than a dumped text block. `auto` lets the UI infer the shape from
 the content's structure when the Skill isn't sure.
+
+**Destinations, not cities (feedback cycle 02).** A stop is not always one
+city — this spec's own reference trip has "Kiruna / Abisko" and a Helsinki +
+Tallinn day. The user-facing word is **Destination**; the schema collection
+stays `cities[]`, because renaming it would break every `cityId`
+cross-reference for no visible gain, and the stable-ID rule above exists to
+prevent exactly that churn. The old Cities and Guide screens are merged into
+one: Guide's country facts and notes had become a duplicate of the detail
+page's lower half, which is why per-city content kept feeling homeless. A
+trip-wide `extras` record (no `cityId`) remains valid but is now the
+exception — it renders under Trip data rather than on a stop that does not own
+it.
+
+**Bookings with no price (feedback cycle 02).** A confirmed booking whose
+document never states a fare is a real gap: this trip's Turkish Airlines ticket
+prints no fare at all. Those are surfaced in rust on Expenses and on the
+destination, each offering to record the price — but **never as a placeholder
+zero-value expense**, which would make the expense count and the category
+breakdown untrue.
+
+**`sourceFile` (schema 1.3).** The file a booking was read from moves out of
+free-text `notes` into its own field. Section 12 still wants the pointer to
+exist; it does not need to be on screen under every record, so the app collects
+them in one collapsible section under Trip data.
 
 **Destination essentials — CONFIRMED:** `destinationNotes` gets a starter
 set of agent-filled entries per city (emergency numbers, plug type, visa
@@ -293,7 +374,25 @@ actually paid — rather than shifting as exchange rates move after the
 fact. Live conversion is still used for informational-only display (e.g.
 a destination page showing "roughly what things cost here" before
 anything is booked) — the snapshot rule applies specifically to recorded
-expenses. If a rate can't be fetched at entry time (offline), the entry
+expenses. **Display currency is the home currency everywhere (feedback cycle
+01).** Figures on one screen have to be comparable without the reader doing
+arithmetic, so `stays[].cost` and `transport[].cost` are converted for display
+against one trip-wide rate table fetched in a single request. The original
+charge is never discarded — it stays as secondary text, because what matters at
+a check-in desk is the number on the booking. A converted booking figure is
+never written back into `expenses[]`.
+
+**A live rate cannot be depended on, so it is the middle option, not the only
+one.** A trip file is opened from `file://`, often on hostel wifi or a plane,
+and the rates API may be blocked outright. Resolution order for any displayed
+figure: (1) a snapshot stored on the record; (2) the live rate table; (3)
+**`trip.rateHints`** — rates implied by the traveller's own booking documents,
+which routinely print both the local charge and a home-currency equivalent, and
+which the Convert Skill should record with `rateHintsDate` and
+`rateHintsSource`; (4) failing all of those, the original currency shown marked
+"not converted yet", never a guess. Hint-derived figures are labelled
+*approx*. A figure the traveller can read offline beats a more precise one they
+never see. If a rate can't be fetched at entry time (offline), the entry
 is saved with `amount`/`currency` only and `homeAmount` filled in the next
 time the app is online, still snapshotting the rate at that point rather
 than leaving it perpetually live. **Currency authority rule (engineering
@@ -444,9 +543,17 @@ output is section 12's Trip Recap, extended with photos once this exists.
   are noted but out of scope until Phase 3 has a backend to hold tokens
   properly.
 - **Assets are embedded, never externally hosted, for the Phase 2
-  output — expert recommendation.** CSS, JS, and fonts (section 11's
-  type system) are all bundled into the single generated file at build
-  time (section 2), never loaded from a remote host/CDN at runtime. A
+  output — expert recommendation.** CSS, JS, fonts (section 11's
+  type system) and icons are all bundled into the single generated file at
+  build time (section 2), never loaded from a remote host/CDN at runtime.
+  **Icons ship as one inline SVG sprite** — each icon a `<symbol>` referenced
+  by `<use>` — never as base64 images: roughly 400 bytes per icon, sharp at
+  every size, and able to follow `currentColor` so one icon set serves both
+  themes. Only icons a build actually references are included, and flags are
+  embedded only for that trip's own countries. Sources are vendored into
+  `src/icons/` by `make icons` rather than resolved at build time, so a trip
+  file still builds identically years later and an icon set shifting upstream
+  cannot change a built app without a visible diff. A
   free-tier host reintroduces a server dependency the whole Phase 2 design
   exists to avoid, and risks the file quietly breaking years later if the
   host lapses — directly against section 12's Trip Recap / keepsake use
@@ -505,6 +612,30 @@ location, rust = alerts only) so switching theme never changes what a
 color *means*, only how it renders — same principle as the accessibility
 requirement in section 8.
 
+**Categorical hues — added in feedback cycle 01 (F1).** The three semantic
+colors above state facts, and that discipline is exactly why the first build
+read as monotonous: three hues, all doing semantic work, none doing identity
+work. The resolution is not to loosen the semantic roles — that is how a red
+button ends up meaning nothing — but to add a **second, separate palette that
+carries identity rather than meaning**:
+
+- `--hue-indigo` `--hue-teal` `--hue-plum` `--hue-moss` `--hue-cyan`
+  `--hue-magenta` `--hue-slate` `--hue-clay` `--hue-sage`, each with a lifted
+  variant for dark surfaces.
+- Every screen and every checklist category owns one, applied via
+  `data-accent` so nested components inherit it rather than being told.
+  **No screen may take a semantic colour as its accent** — cycle 01 gave Today
+  `brass`, tinting its headers with the gold that means "done" everywhere
+  else, which is precisely the confusion this rule exists to prevent
+  (corrected in cycle 02, C1). `make check` now asserts this.
+- It appears on section rules, icons, chips and the nav's active marker —
+  **never on a control that does something.** The two palettes never mix.
+
+Deliberately cool and jewel-toned, avoiding gold and orange-red so nothing
+collides with brass or rust. Dark mode also gained a real elevation ramp
+(`--surface`, `--surface-2`, `--overlay`, three shadow levels): the original
+dark theme read cheap because it was flat, which no palette fixes.
+
 **Type** — three roles, each earning its job: a condensed grotesk for
 headers (departure-board character), a humanist sans for body/UI, and a
 mono face reserved for actual ticket data — times, dates, prices,
@@ -542,6 +673,18 @@ trip-tracking apps quietly die by day 2 or 3.
   "where am I, what's next." After `endDate` passes, it opens to Trip
   Recap (below). This is the single highest-value navigation decision for
   actual daily use, not an aesthetic one.
+  **Which day is "before" (feedback cycle 02, C2):** the comparison is against
+  `trip.startDate`, never against today. Any date before departure shows the
+  countdown and the first leg; the start date itself shows day 1. Comparing
+  against today meant browsing to any pre-departure date fell through to the
+  day view and reported "outside the trip dates".
+  **Date picker (feedback cycle 01, F6):** Today also carries a scrollable
+  week strip plus a jump-to-date control, so "what happens on the 17th" is
+  answerable without leaving the screen. The app always *opens* on the real
+  today; the strip only changes what is being looked at. Logging an expense
+  while viewing another date uses the viewed date, shown in the sheet so it
+  is never a surprise — someone scrolling back is usually catching up on a
+  receipt they forgot.
 - **Quick-capture, not a form.** Adding an expense from Today should be a
   2-tap flow — amount + category — with today's date and current city
   defaulted automatically. This matters more than it sounds: bringing *new*
@@ -570,12 +713,43 @@ trip-tracking apps quietly die by day 2 or 3.
   natural on-ramp to the pattern-mining feedback loop in section 6, and
   the eventual home for the shareable photo travel book (section 7,
   Phase 3, future) once that exists.
+- **Upcoming tasks group by the day they are due (feedback cycle 02, C6).** A
+  flat fourteen-day list buried what mattered now. One collapsible per day,
+  days with nothing are not rendered at all, and the window re-anchors whenever
+  the selected date changes. Overdue items stay in their own block above the
+  groups and are never folded away.
+
+- **Sections collapse on the city page (feedback cycle 01, F12).** The city
+  page is long enough to need it, with three conditions that keep it from
+  hurting: the section relevant **today** opens by default rather than
+  mechanically the first one; open/closed state is remembered per section per
+  city; and a section holding an alert — an overdue task, a live cancellation
+  deadline — refuses to collapse, because hiding the one urgent thing is worse
+  than a long page. Expand-all/collapse-all sits in the page header, and
+  section headers are real buttons carrying `aria-expanded`.
+
+- **Sharing is global (feedback cycle 01, F5).** The share control is reachable
+  from every screen — nav rail on desktop, header on mobile — and opens one
+  sheet offering all three paths: read-only snapshot, forkable export, and
+  `.ics`. Where the browser supports the Web Share API, that hands the file
+  straight to WhatsApp or AirDrop instead of routing through a download.
+
 - **Keep a pointer back to the source document.** `stays[]`/`transport[]`
   capture facts extracted *from* a PDF/photo, correctly not the document
   itself (no reason to bloat `localStorage` with base64 PDFs). Worth
   keeping the original filename in `notes` during Convert, so a traveler
   at check-in knows which email or downloads-folder file to actually pull
   up if they need the real boarding pass.
+- **An `extras` record is not a dead end (feedback cycle 01, F13).** The
+  "worth knowing" material was presenting facts and offering nothing to do with
+  them. Three changes: `extras[].links` carries URLs the Convert Skill finds at
+  build time (official site, timetable, maps); every extra offers **"make it a
+  task"**, which is what turns reading into doing and is the part that actually
+  fixes the complaint; and extras tied to the current city surface on Today
+  rather than waiting to be looked for. Extras are also browsed through a
+  scroll-snap carousel (F11) that works with touch, trackpad, arrow keys and
+  visible buttons — not a touch-only widget that strands desktop users.
+
 - **Weather-informed packing.** Checklist items tagged `category: packing`
   get cross-referenced against that item's `cityId` and the live weather
   widget for that city — a high rain-chance city surfaces a nudge next to
@@ -635,18 +809,25 @@ whole repo first.
 **Predictable folder taxonomy:**
 ```
 /skills/         — Skill instruction files: Intake, Convert, Persona-adapt,
-                    the persona-profile Skill (section 5)
-/src/            — app shell source: css/, js/, templates/, fonts/
-                    (bundled + minified by `make build`, section 2)
-/scripts/        — Python build tooling
+                    the persona-profile Skill (section 5), the quality bar
+/src/            — app source, bundled into one file by `make build` (section 2)
+   css/            numbered — the number IS the load order
+   app/            Preact + htm ES modules: lib/ state/ data/ ui/ screens/
+   templates/      the HTML shell
+   fonts/          optional .woff2, embedded at build
+   icons/          manifests + vendored SVGs, committed (section 8)
+/scripts/        — Python build tooling, plus the jsdom smoke test
 /raw/            — a trip's raw data, gitignored (section 4's security boundary)
 /trips/          — generated input.json/output.json + built output per
                     trip, gitignored (section 8's role-based naming)
 /docs/           — this spec and related docs
+/feedback/       — review cycles; each cycle's original is kept verbatim
+default.json       the standard checklist catalogue (section 4)
 Makefile
 Dockerfile
 docker-compose.yml
-AGENTS.md
+AGENTS.md          the agent contract
+CLAUDE.md          Claude Code's operating instructions
 ```
 
 **Skills follow a self-describing frontmatter convention** — the same

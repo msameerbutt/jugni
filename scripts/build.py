@@ -2,8 +2,8 @@
 """`make build` — assemble src/ into one self-contained file (spec §2/§8).
 
 Source stays multi-file for contributors; this is the only place it becomes a
-single file. Nothing in the output is fetched from a remote host at runtime:
-CSS, JS and fonts are all inlined here.
+single file. Nothing in the output is fetched at runtime: CSS, JS, fonts and
+icons are all inlined here.
 
 With an input.json present its data is baked in (build path (a) in spec §8).
 Without one it produces the generic empty shell that loads a trip through the
@@ -14,27 +14,67 @@ import argparse
 import base64
 import json
 import re
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.lib import paths
-from scripts.lib.minify import minify_css, minify_js
+from scripts.lib import paths, sprite
+from scripts.lib.minify import minify_css
 
 FONT_ROLES = [("display", "Jugni Display"), ("sans", "Jugni Sans"), ("mono", "Jugni Mono")]
 
+# Icon names the sprite scanner cannot see, because they arrive as data rather
+# than as literals in the source.
+ALWAYS_INCLUDE_ICONS = {"circle-dot", "chevron-down", "chevron-left", "chevron-right"}
 
-def read_ordered(directory: Path, suffix: str) -> list[tuple[str, str]]:
-    """Files are numbered, so load order is explicit in the filenames rather
-    than hidden in a manifest that drifts out of date."""
-    files = sorted(p for p in directory.glob(f"*{suffix}") if p.is_file())
-    return [(p.name, p.read_text(encoding="utf-8")) for p in files]
+
+def read_css() -> str:
+    """Files are numbered, so load order lives in the filenames rather than in
+    a manifest that drifts out of date."""
+    files = sorted(p for p in paths.CSS.glob("*.css") if p.is_file())
+    if not files:
+        raise SystemExit("error: no CSS found under src/css")
+    print(f"  css:  {len(files)} files")
+    return "\n".join(p.read_text(encoding="utf-8") for p in files)
+
+
+def bundle_js(minify: bool) -> str:
+    """esbuild resolves preact and htm through the symlink at /node_modules
+    (see Dockerfile), so the repo stays free of a node_modules tree."""
+    entry = paths.SRC / "app" / "main.js"
+    if not entry.exists():
+        raise SystemExit(f"error: entry point not found at {entry}")
+
+    with tempfile.NamedTemporaryFile("r", suffix=".js", delete=False) as tmp:
+        out_path = tmp.name
+
+    cmd = [
+        "esbuild", str(entry),
+        "--bundle", "--format=iife", "--target=es2020",
+        "--legal-comments=none", f"--outfile={out_path}",
+    ]
+    if minify:
+        cmd.append("--minify")
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        Path(out_path).unlink(missing_ok=True)
+        raise SystemExit(f"error: esbuild failed\n{result.stderr.strip()}")
+
+    js = Path(out_path).read_text(encoding="utf-8")
+    Path(out_path).unlink(missing_ok=True)
+
+    modules = len(list((paths.SRC / "app").rglob("*.js")))
+    print(f"  js:   {modules} modules bundled → {len(js) / 1024:.0f} KB")
+    return js
 
 
 def build_fonts() -> str:
     """Embed any .woff2 in src/fonts as base64 @font-face rules (spec §8).
-    Empty folder is fine: the token stacks fall back to platform faces."""
+    An empty folder is fine: the token stacks fall back to platform faces."""
     if not paths.FONTS.exists():
         return ""
     rules = []
@@ -42,32 +82,75 @@ def build_fonts() -> str:
         stem = font.stem.lower()
         family = next((fam for key, fam in FONT_ROLES if key in stem), None)
         if not family:
-            print(f"  ! skipping {font.name}: filename must contain display/sans/mono")
+            print(f"  !     skipping {font.name}: filename must contain display/sans/mono")
             continue
-        weight_match = re.search(r"-(\d{3})$", stem)
-        weight = weight_match.group(1) if weight_match else "400"
+        weight = (re.search(r"-(\d{3})$", stem) or [None, "400"])[1]
         style = "italic" if "italic" in stem else "normal"
         b64 = base64.b64encode(font.read_bytes()).decode("ascii")
         rules.append(
-            f"@font-face{{font-family:'{family}';font-weight:{weight};"
-            f"font-style:{style};font-display:swap;"
-            f"src:url(data:font/woff2;base64,{b64}) format('woff2')}}"
-        )
-        print(f"  + font {font.name} -> {family} {weight}")
+            f"@font-face{{font-family:'{family}';font-weight:{weight};font-style:{style};"
+            f"font-display:swap;src:url(data:font/woff2;base64,{b64}) format('woff2')}}")
+        print(f"  font: {font.name} → {family} {weight}")
     return "".join(rules)
 
 
-def load_trip(input_path: Path):
-    if not input_path.exists():
+def load_json(path: Path | None):
+    if not path or not path.exists():
         return None
     try:
-        return json.loads(input_path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise SystemExit(f"error: {input_path} is not valid JSON — {exc}")
+        raise SystemExit(f"error: {path} is not valid JSON — {exc}")
+
+
+def strip_comments(doc):
+    """default.json documents itself with $comment keys; they are for whoever
+    edits the file, not for the 122 KB a traveller downloads."""
+    if isinstance(doc, dict):
+        return {k: strip_comments(v) for k, v in doc.items() if not k.startswith("$")}
+    if isinstance(doc, list):
+        return [strip_comments(v) for v in doc]
+    return doc
+
+
+def flags_for(trip) -> set[str]:
+    """Only the trip's own countries are embedded. Including every vendored
+    flag would add megabytes to a file whose whole point is being small enough
+    to send over WhatsApp."""
+    available = {p.stem for p in (paths.SRC / "icons" / "flags").glob("*.svg")}
+    if not trip:
+        return available          # empty shell: the manifest set is small
+    wanted = set()
+    for city in trip.get("cities") or []:
+        code = str(city.get("countryCode") or "").lower()
+        if code:
+            wanted.add(code)
+        else:
+            name = str(city.get("country") or "").lower()
+            wanted |= {c for c in available if COUNTRY_HINTS.get(name) == c}
+    home = str(trip.get("trip", {}).get("homeCurrency") or "")[:2].lower()
+    if home in available:
+        wanted.add(home)
+    return wanted & available or available
+
+
+# Mirrors the table in src/app/lib/util.js. Kept small on purpose: a country
+# the app cannot name is a country whose flag simply does not render.
+COUNTRY_HINTS = {
+    "australia": "au", "austria": "at", "belgium": "be", "croatia": "hr",
+    "czechia": "cz", "czech republic": "cz", "denmark": "dk", "estonia": "ee",
+    "finland": "fi", "france": "fr", "germany": "de", "greece": "gr",
+    "hungary": "hu", "iceland": "is", "ireland": "ie", "italy": "it",
+    "latvia": "lv", "lithuania": "lt", "netherlands": "nl", "norway": "no",
+    "poland": "pl", "portugal": "pt", "romania": "ro", "serbia": "rs",
+    "slovakia": "sk", "slovenia": "si", "spain": "es", "sweden": "se",
+    "switzerland": "ch", "turkey": "tr", "türkiye": "tr", "turkiye": "tr",
+    "united kingdom": "gb", "united states": "us",
+}
 
 
 def embed_json(data) -> str:
-    """`</script>` inside embedded JSON would end the script element early."""
+    """`</script>` inside embedded JSON would close the element early."""
     return json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
 
@@ -78,47 +161,51 @@ def main() -> int:
     ap.add_argument("--no-minify", action="store_true", help="readable output, for debugging")
     args = ap.parse_args()
 
-    out_path = (paths.ROOT / args.out).resolve() if not Path(args.out).is_absolute() else Path(args.out)
-    input_path = (paths.ROOT / args.input).resolve() if args.input else None
+    out_path = Path(args.out)
+    if not out_path.is_absolute():
+        out_path = paths.ROOT / out_path
+    input_path = (paths.ROOT / args.input) if args.input else None
 
-    css_files = read_ordered(paths.CSS, ".css")
-    js_files = read_ordered(paths.JS, ".js")
-    if not css_files or not js_files:
-        raise SystemExit("error: no source found under src/css or src/js")
+    rel = out_path.relative_to(paths.ROOT) if out_path.is_relative_to(paths.ROOT) else out_path
+    print(f"building {rel}")
 
-    print(f"building {out_path.relative_to(paths.ROOT) if out_path.is_relative_to(paths.ROOT) else out_path}")
-    print(f"  css: {len(css_files)} files   js: {len(js_files)} files")
-
-    css = "\n".join(body for _, body in css_files)
-    js = "\n".join(body for _, body in js_files)
-
-    # Everything shares one function scope: no globals leak onto window, and
-    # no module loader is needed in a file opened over file://.
-    js = '"use strict";\n(function(){\n' + js + "\n})();"
-
-    if not args.no_minify:
-        css, js = minify_css(css), minify_js(js)
-
-    fonts = build_fonts()
-
-    trip = load_trip(input_path) if input_path else None
+    trip = load_json(input_path)
     if input_path and trip is None:
-        print(f"  ! {args.input} not found — building the empty shell instead")
+        print(f"  !     {args.input} not found — building the empty shell instead")
+
+    defaults = strip_comments(load_json(paths.ROOT / "default.json") or {})
+
+    css = read_css()
+    js = bundle_js(minify=not args.no_minify)
+    if not args.no_minify:
+        css = minify_css(css)
+
+    available_icons = {p.stem for p in (paths.SRC / "icons" / "lucide").glob("*.svg")}
+    icon_names = sprite.referenced_icons(
+        paths.SRC / "app",
+        [json.dumps(defaults)],
+        available_icons,
+    ) | (ALWAYS_INCLUDE_ICONS & available_icons)
+    sprite_markup, stats = sprite.build(
+        paths.SRC / "icons", icon_names, flags_for(trip))
+    print(f"  icons:{stats['icons']} symbols + {stats['flags']} flags "
+          f"({len(sprite_markup) / 1024:.0f} KB)")
+    if stats["missing_flags"]:
+        print(f"  !     flags not vendored: {', '.join(stats['missing_flags'])} "
+              f"— add them to src/icons/flags.txt and run `make icons`")
 
     name = (trip or {}).get("trip", {}).get("name") or "Jugni"
-    title = f"{name} · Jugni" if name != "Jugni" else "Jugni"
-    description = "Your trip, in one place — checklist, cities, expenses, weather and guide."
-
     template = (paths.TEMPLATES / "app.html").read_text(encoding="utf-8")
-    html = (
-        template
-        .replace("{{TRIP_TITLE}}", title)
-        .replace("{{TRIP_DESCRIPTION}}", description)
-        .replace("{{STYLES}}", fonts + css)
-        .replace("{{SCRIPTS}}", js)
-        .replace("{{DATA}}", embed_json(trip) if trip else "")
-    )
-    html = "<!doctype html>\n<html lang=\"en\">\n" + html + "\n</html>\n"
+    html = (template
+            .replace("{{TRIP_TITLE}}", f"{name} · Jugni" if name != "Jugni" else "Jugni")
+            .replace("{{TRIP_DESCRIPTION}}",
+                     "Your trip, in one place — checklist, cities, expenses, weather and guide.")
+            .replace("{{STYLES}}", build_fonts() + css)
+            .replace("{{SPRITE}}", sprite_markup)
+            .replace("{{DEFAULTS}}", embed_json(defaults) if defaults else "")
+            .replace("{{DATA}}", embed_json(trip) if trip else "")
+            .replace("{{SCRIPTS}}", js))
+    html = f'<!doctype html>\n<html lang="en">\n{html}\n</html>\n'
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html, encoding="utf-8")

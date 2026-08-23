@@ -1,0 +1,81 @@
+{
+  "$comment": [
+    "The standard catalogue (spec §4, feedback cycle 01 F4).",
+    "",
+    "This is NOT a trip. It defines the checklist categories every Jugni uses, and",
+    "the items most trips want, so 'pack a shaver' is remembered by default rather",
+    "than only when the agent happens to think of it.",
+    "",
+    "input.json may ADD to a trip and may suppress an instantiated item, but it",
+    "cannot redefine a category or rewrite a default's text. That is what keeps the",
+    "catalogue authoritative while the traveller's own list stays theirs.",
+    "",
+    "appliesTo decides whether an item is instantiated for a given trip:",
+    "  always            every trip",
+    "  persona:<id>      the primary traveller has that need profile (spec §5)",
+    "  country:<name|cc> the trip visits that country",
+    "  lat:>60 / lat:<n  any city above/below that latitude — a proxy for far north",
+    "  cities:<n>        the trip has at least n cities",
+    "  nights:<n>        the trip is at least n nights long",
+    "dueOffset is days BEFORE departure, since the catalogue cannot know dates."
+  ],
+
+  "version": "1.0",
+
+  "categories": [
+    { "id": "documents",     "label": "Documents",     "icon": "file-text",     "accent": "indigo",  "order": 1 },
+    { "id": "money",         "label": "Money",         "icon": "credit-card",   "accent": "moss",    "order": 2 },
+    { "id": "booking",       "label": "Bookings",      "icon": "calendar-days", "accent": "cyan",    "order": 3 },
+    { "id": "transport",     "label": "Transport",     "icon": "plane",         "accent": "slate",   "order": 4 },
+    { "id": "packing",       "label": "Packing",       "icon": "luggage",       "accent": "clay",    "order": 5 },
+    { "id": "personal-care", "label": "Personal care", "icon": "heart-pulse",   "accent": "magenta", "order": 6 },
+    { "id": "tech",          "label": "Tech",          "icon": "smartphone",    "accent": "teal",    "order": 7 },
+    { "id": "general",       "label": "General",       "icon": "circle-dot",    "accent": "sage",    "order": 8 }
+  ],
+
+  "checklistDefaults": [
+    { "id": "passport",      "category": "documents", "task": "Check passport validity — 6 months past your return, 2 blank pages", "appliesTo": "always", "dueOffset": 45 },
+    { "id": "visa",          "category": "documents", "task": "Check visa or entry requirements for every country on the route", "appliesTo": "cities:2", "dueOffset": 40 },
+    { "id": "insurance",     "category": "documents", "task": "Buy travel insurance", "appliesTo": "always", "dueOffset": 21 },
+    { "id": "copies",        "category": "documents", "task": "Save offline copies of passport, tickets and bookings", "appliesTo": "always", "dueOffset": 3 },
+    { "id": "emergency",     "category": "documents", "task": "Leave your itinerary with someone at home", "appliesTo": "always", "dueOffset": 2 },
+
+    { "id": "bank",          "category": "money", "task": "Tell the bank your travel dates and check foreign transaction fees", "appliesTo": "always", "dueOffset": 10 },
+    { "id": "cash",          "category": "money", "task": "Get a small amount of local cash for arrival", "appliesTo": "always", "dueOffset": 3 },
+    { "id": "backup-card",   "category": "money", "task": "Pack a backup card, stored separately from your main one", "appliesTo": "always", "dueOffset": 2 },
+    { "id": "daily-budget",  "category": "money", "task": "Agree a daily spending target", "appliesTo": "persona:budget-backpacker", "dueOffset": 7 },
+
+    { "id": "checkin",       "category": "booking", "task": "Check in online for your first flight", "appliesTo": "always", "dueOffset": 1 },
+    { "id": "transfers",     "category": "booking", "task": "Sort airport transfers at both ends", "appliesTo": "always", "dueOffset": 5 },
+    { "id": "cancellations", "category": "booking", "task": "Review free-cancellation deadlines before they pass", "appliesTo": "always", "dueOffset": 14 },
+
+    { "id": "transit-pass",  "category": "transport", "task": "Compare a transit pass against single tickets in each city", "appliesTo": "persona:budget-backpacker", "dueOffset": 7 },
+    { "id": "seat-legs",     "category": "transport", "task": "Confirm every city-to-city leg is actually booked", "appliesTo": "cities:3", "dueOffset": 14 },
+
+    { "id": "adapter",       "category": "packing", "task": "Pack plug adapters for every country on the route", "appliesTo": "always", "dueOffset": 3 },
+    { "id": "daypack",       "category": "packing", "task": "Pack a daypack", "appliesTo": "always", "dueOffset": 2 },
+    { "id": "rain-shell",    "category": "packing", "task": "Pack a rain shell", "appliesTo": "always", "dueOffset": 2 },
+    { "id": "thermals",      "category": "packing", "task": "Pack thermal base layers, gloves and a beanie", "appliesTo": "lat:>60", "dueOffset": 3, "note": "The route goes far enough north for this to matter." },
+    { "id": "padlock",       "category": "packing", "task": "Pack a padlock for hostel lockers", "appliesTo": "persona:budget-backpacker", "dueOffset": 2 },
+    { "id": "boots",         "category": "packing", "task": "Pack broken-in walking boots", "appliesTo": "persona:adventure-outdoor", "dueOffset": 3 },
+    { "id": "laundry",       "category": "packing", "task": "Plan laundry — pack for a week, not for the whole trip", "appliesTo": "nights:10", "dueOffset": 4 },
+
+    { "id": "medicine",      "category": "personal-care", "task": "Pack general medicine — painkillers, antihistamine, upset stomach, blister plasters", "appliesTo": "always", "dueOffset": 4 },
+    { "id": "prescriptions", "category": "personal-care", "task": "Pack prescriptions in original packaging, with a copy of the script", "appliesTo": "always", "dueOffset": 7 },
+    { "id": "shaver",        "category": "personal-care", "task": "Pack shaver and toiletries", "appliesTo": "always", "dueOffset": 2 },
+    { "id": "sunscreen",     "category": "personal-care", "task": "Pack sunscreen and lip balm", "appliesTo": "always", "dueOffset": 2 },
+    { "id": "vaccinations",  "category": "personal-care", "task": "Check whether any vaccinations are needed", "appliesTo": "always", "dueOffset": 45 },
+
+    { "id": "esim",          "category": "tech", "task": "Sort a local eSIM or roaming plan", "appliesTo": "always", "dueOffset": 5 },
+    { "id": "chargers",      "category": "tech", "task": "Pack chargers, cables and a power bank", "appliesTo": "always", "dueOffset": 2 },
+    { "id": "offline-maps",  "category": "tech", "task": "Download offline maps for every city", "appliesTo": "cities:2", "dueOffset": 3 },
+    { "id": "backup-photos", "category": "tech", "task": "Set photos to back up automatically over wifi", "appliesTo": "always", "dueOffset": 3 },
+
+    { "id": "night-transport", "category": "general", "task": "Look up last trains and night buses in each city", "appliesTo": "persona:nightlife-focused", "dueOffset": 4 },
+    { "id": "permits",       "category": "general", "task": "Check whether any hikes or parks need permits booked ahead", "appliesTo": "persona:adventure-outdoor", "dueOffset": 30 },
+    { "id": "food-research", "category": "general", "task": "Find certified or suitable places to eat in each city", "appliesTo": "persona:dietary-practice-conscious", "dueOffset": 10 },
+    { "id": "step-free",     "category": "general", "task": "Verify step-free routes and accessible entrances for planned stops", "appliesTo": "persona:accessibility-needs", "dueOffset": 14 },
+    { "id": "quiet-hours",   "category": "general", "task": "Check quiet hours and booking rules for spas and baths", "appliesTo": "persona:wellness-retreat", "dueOffset": 10 },
+    { "id": "kid-pacing",    "category": "general", "task": "Plan around nap and meal timing for each travel day", "appliesTo": "persona:family-with-kids", "dueOffset": 10 }
+  ]
+}

@@ -1,0 +1,647 @@
+/* Every mutation and flow the UI can trigger. Screens stay declarative;
+   anything that changes data or opens a sheet lives here. */
+import { html } from './lib/html.js';
+import { Field } from './ui/components.js';
+import { Icon } from './lib/icons.js';
+import { openSheet, toast, confirmDestructive } from './ui/overlay.js';
+import * as Store from './state/store.js';
+import * as D from './state/derive.js';
+import { snapshot as fxSnapshot } from './data/currency.js';
+import { toHome } from './data/rates.js';
+import { uid, todayISO, moneyText, titleCase, day } from './lib/util.js';
+import { save, pick } from './lib/files.js';
+import { buildICS } from './lib/ics.js';
+import { buildSnapshot } from './lib/snapshot.js';
+
+const s = () => Store.getState();
+
+/* Categories come from the catalogue so a new one needs no code change
+   (feedback F4). */
+export function categories() {
+  const fromCatalogue = Store.getCatalogue().categories || [];
+  const used = new Set(s().checklist.map((c) => c.category).filter(Boolean));
+  const known = new Set(fromCatalogue.map((c) => c.id));
+  return [
+    ...fromCatalogue,
+    ...[...used].filter((id) => !known.has(id))
+      .map((id) => ({ id, label: titleCase(id.replace(/-/g, ' ')), icon: 'circle-dot', accent: 'slate' })),
+  ];
+}
+export const categoryById = (id) => categories().find((c) => c.id === id)
+  || { id, label: titleCase(String(id || 'general').replace(/-/g, ' ')), icon: 'circle-dot', accent: 'slate' };
+
+export const cityOptions = () => [
+  { value: '', label: '— none —' },
+  ...D.citiesInOrder(s()).map((c) => ({ value: c.id, label: c.name })),
+];
+
+/* The trip's own currencies first: a traveller in Oslo should not scroll 150
+   codes to reach NOK. */
+export function currencyOptions() {
+  const seen = new Set();
+  const add = (c) => c && seen.add(c);
+  add(s().trip.homeCurrency);
+  s().expenses.forEach((e) => add(e.currency));
+  s().stays.forEach((x) => add(x.currency));
+  s().transport.forEach((t) => add(t.currency));
+  ['EUR', 'USD', 'GBP', 'AUD', 'NOK', 'SEK', 'DKK', 'HUF', 'PLN', 'CZK', 'CHF', 'TRY', 'JPY']
+    .forEach(add);
+  return [...seen];
+}
+
+const lastCurrency = () => { try { return localStorage.getItem('jugni.lastCurrency') || ''; } catch { return ''; } };
+const rememberCurrency = (c) => { try { localStorage.setItem('jugni.lastCurrency', c); } catch { /* ignore */ } };
+
+/* ---------------------------------------------------------------- checklist */
+
+export function toggleTask(id) {
+  Store.mutate((d) => {
+    const item = d.checklist.find((c) => c.id === id);
+    if (!item) return;
+    item.done = !item.done;
+    item.completedDate = item.done ? todayISO() : null;
+    Store.logEvent(d, 'task', 'checklist', id, `${item.done ? 'Done' : 'Reopened'}: ${item.task}`);
+  });
+}
+
+function taskForm(item = {}, presetCity) {
+  return () => html`
+    <${Field} label="Task" name="task" value=${item.task} autofocus
+              placeholder="e.g. Renew travel insurance" />
+    <div class="formgrid">
+      <${Field} label="Category" name="category" type="select"
+                value=${item.category || 'general'}
+                options=${categories().map((c) => ({ value: c.id, label: c.label }))} />
+      <${Field} label="Due date" name="dueDate" type="date" value=${day(item.dueDate)} />
+    </div>
+    <${Field} label="City" name="cityId" type="select"
+              value=${item.cityId ?? presetCity ?? ''} options=${cityOptions()} />`;
+}
+
+export function addTask(presetCity) {
+  openSheet({
+    title: 'Add a task',
+    confirmLabel: 'Add task',
+    render: taskForm({}, presetCity),
+    onSubmit(v) {
+      if (!v.task?.trim()) return;
+      Store.mutate((d) => d.checklist.push({
+        id: uid('task'), task: v.task.trim(), category: v.category || 'general',
+        cityId: v.cityId || '', dueDate: v.dueDate || '', done: false, completedDate: null,
+      }));
+      toast('Task added');
+    },
+  });
+}
+
+export function editTask(id) {
+  const item = s().checklist.find((c) => c.id === id);
+  if (!item) return;
+  openSheet({
+    title: 'Edit task',
+    render: taskForm(item),
+    secondary: { label: 'Delete', icon: 'trash-2', onClick: () => deleteTask(id) },
+    onSubmit(v) {
+      Store.mutate((d) => {
+        const rec = d.checklist.find((c) => c.id === id);
+        if (!rec) return;
+        Object.assign(rec, {
+          task: v.task, category: v.category, cityId: v.cityId || '', dueDate: v.dueDate || '',
+        });
+      });
+    },
+  });
+}
+
+/* F3/F9: deletion names its subject, and stays undoable afterwards. */
+export function deleteTask(id) {
+  const item = s().checklist.find((c) => c.id === id);
+  if (!item) return;
+  confirmDestructive({
+    title: 'Delete this task?',
+    what: item.task,
+    detail: item.source === 'default'
+      ? 'This came from the standard checklist. Deleting it here removes it from this trip only.'
+      : 'It will be removed from this trip.',
+    onConfirm() {
+      const undo = Store.mutateUndoable((d) => {
+        d.checklist = d.checklist.filter((c) => c.id !== id);
+        if (item.source === 'default') d.suppressed.push(id);
+      });
+      if (undo) toast('Task deleted', { label: 'Undo', onClick: undo });
+    },
+  });
+}
+
+/* ---------------------------------------------------------------- expenses */
+
+/* Quick-capture (spec §12): amount and category, everything else defaulted.
+   This is the only way to add data while actually travelling, so it has to be
+   short enough to do standing at a counter. */
+export function quickExpense(viewDate) {
+  const state = s();
+  const home = state.trip.homeCurrency;
+  const date = viewDate || todayISO();
+  const city = D.cityOn(state, date);
+  const cats = ['food', 'transport', 'stay', 'activity', 'shopping', 'fees', 'other'];
+
+  openSheet({
+    title: 'Log spend',
+    confirmLabel: 'Save',
+    render: () => html`
+      <div class="amountpad">
+        <${Field} label="Amount" name="amount" type="number" step="0.01" min="0"
+                  inputmode="decimal" placeholder="0.00" autofocus big />
+        <${Field} label="Currency" name="currency" type="select"
+                  value=${lastCurrency() || home} options=${currencyOptions()} />
+      </div>
+      <${Field} label="Category" name="category" type="select" value="food"
+                options=${cats.map((c) => ({ value: c, label: titleCase(c) }))} />
+      <div class="formgrid">
+        <${Field} label="Date" name="date" type="date" value=${date}
+                  hint=${date !== todayISO() ? 'Using the date you are viewing' : undefined} />
+        <${Field} label="City" name="cityId" type="select" value=${city?.id || ''} options=${cityOptions()} />
+      </div>
+      <${Field} label="Label" name="label" placeholder="optional" />`,
+    onSubmit: (v) => saveExpense(null, v),
+  });
+}
+
+export function editExpense(id) {
+  const e = s().expenses.find((x) => x.id === id);
+  if (!e) return;
+  openSheet({
+    title: 'Edit expense',
+    render: () => html`
+      <div class="amountpad">
+        <${Field} label="Amount" name="amount" type="number" step="0.01" value=${e.amount} autofocus big />
+        <${Field} label="Currency" name="currency" type="select" value=${e.currency} options=${currencyOptions()} />
+      </div>
+      <${Field} label="Label" name="label" value=${e.label} />
+      <div class="formgrid">
+        <${Field} label="Category" name="category" type="select" value=${e.category}
+                  options=${['food','transport','stay','activity','shopping','fees','other']
+                    .map((c) => ({ value: c, label: titleCase(c) }))} />
+        <${Field} label="Date" name="date" type="date" value=${day(e.date)} />
+      </div>
+      <${Field} label="City" name="cityId" type="select" value=${e.cityId || ''} options=${cityOptions()} />`,
+    secondary: { label: 'Delete', icon: 'trash-2', onClick: () => deleteExpense(id) },
+    onSubmit: (v) => saveExpense(id, v),
+  });
+}
+
+function saveExpense(id, v) {
+  const amount = parseFloat(v.amount);
+  if (!amount || amount <= 0) { toast('Enter an amount'); return; }
+  const home = s().trip.homeCurrency;
+  const currency = v.currency || home;
+  const recordId = id || uid('exp');
+  rememberCurrency(currency);
+
+  Store.mutate((d) => {
+    const base = {
+      label: v.label || '', category: v.category || 'other',
+      amount, currency, date: v.date || todayISO(), cityId: v.cityId || '',
+      /* The stored conversion belongs to the old amount; re-snapshot it. */
+      homeAmount: null, homeCurrency: home, rateSnapshotDate: null,
+    };
+    const existing = d.expenses.find((x) => x.id === recordId);
+    if (existing) Object.assign(existing, base);
+    else {
+      d.expenses.push({ id: recordId, ...base });
+      Store.logEvent(d, 'expense', 'expense', recordId,
+        `Logged ${moneyText(amount, currency)} — ${base.label || base.category}`);
+    }
+  });
+
+  /* Snapshot the rate once, now (spec §4). Offline it stays null and gets
+     backfilled on the next online boot. */
+  fxSnapshot(amount, currency, home, v.date).then((snap) => {
+    if (snap.homeAmount === null) { toast("Saved — will convert when you're online"); return; }
+    Store.mutate((d) => {
+      const rec = d.expenses.find((x) => x.id === recordId);
+      if (rec) Object.assign(rec, snap);
+    });
+  });
+}
+
+export function deleteExpense(id) {
+  const e = s().expenses.find((x) => x.id === id);
+  if (!e) return;
+  confirmDestructive({
+    title: 'Delete this expense?',
+    what: `${moneyText(e.amount, e.currency)}${e.label ? ` — ${e.label}` : ''}`,
+    onConfirm() {
+      const undo = Store.mutateUndoable((d) => { d.expenses = d.expenses.filter((x) => x.id !== id); });
+      if (undo) toast('Expense deleted', { label: 'Undo', onClick: undo });
+    },
+  });
+}
+
+/* F8: a confirmed group booking becomes a personal expense on request, never
+   automatically — the split is a claim about who paid, and only the traveller
+   knows that. */
+export function splitStay(stayId) {
+  const state = s();
+  const stay = state.stays.find((x) => x.id === stayId);
+  if (!stay) return;
+  const people = D.headcount(state);
+  const home = state.trip.homeCurrency;
+
+  openSheet({
+    title: 'Add your share',
+    render: () => html`
+      <p class="small muted">
+        <strong>${stay.name}</strong> is booked at
+        ${' '}${moneyText(stay.cost, stay.currency)}${homeHint(stay)} for the whole party.
+        Add your share as an expense so it counts against your budget.
+      </p>
+      <div class="formgrid">
+        <${Field} label="Split between" name="people" type="number" min="1" value=${people}
+                  hint=${`${people} travellers on this trip`} />
+        <${Field} label="Or enter your share" name="override" type="number" step="0.01"
+                  placeholder="optional" hint=${`in ${stay.currency || home}`} />
+      </div>`,
+    confirmLabel: 'Add expense',
+    onSubmit(v) {
+      const people2 = Math.max(1, parseInt(v.people, 10) || 1);
+      const override = parseFloat(v.override);
+      const amount = Number.isFinite(override) && override > 0
+        ? override
+        : Math.round((Number(stay.cost) / people2) * 100) / 100;
+      const currency = stay.currency || home;
+      const id = uid('exp');
+
+      Store.mutate((d) => {
+        d.expenses.push({
+          id, label: stay.name, category: 'stay', amount, currency,
+          homeAmount: null, homeCurrency: home, rateSnapshotDate: null,
+          date: day(stay.checkIn) || todayISO(), cityId: stay.cityId,
+          relatedStayId: stay.id,
+        });
+        Store.logEvent(d, 'expense', 'stay', stay.id,
+          `Added share of ${stay.name}: ${moneyText(amount, currency)}`);
+      });
+
+      fxSnapshot(amount, currency, home, stay.checkIn).then((snap) => {
+        if (snap.homeAmount === null) return;
+        Store.mutate((d) => {
+          const rec = d.expenses.find((x) => x.id === id);
+          if (rec) Object.assign(rec, snap);
+        });
+      });
+      toast(`Added ${moneyText(amount, currency)} to your spend`);
+    },
+  });
+}
+
+/* The sheet quotes the booking's own currency, since that is what the document
+   says — but a traveller budgeting in AUD needs the comparable figure beside
+   it, not a mental conversion. */
+function homeHint(stay) {
+  const home = s().trip.homeCurrency;
+  if (!stay.currency || stay.currency === home) return '';
+  const converted = toHome(stay.cost, stay.currency, ratesSnapshot());
+  return converted === null ? '' : ` (about ${moneyText(converted, home)})`;
+}
+let ratesSnapshot = () => ({ base: '', rates: {} });
+export const bindRates = (fn) => { ratesSnapshot = fn; };
+
+/* C5: fill in a fare the document never stated. Writes the price onto the
+   booking itself, then offers the split for a group stay — rather than
+   creating a placeholder expense that would misreport the totals. */
+export function addPriceFor(kind, id) {
+  const state = s();
+  const rec = kind === 'stay'
+    ? state.stays.find((x) => x.id === id)
+    : state.transport.find((x) => x.id === id);
+  if (!rec) return;
+
+  const label = kind === 'stay' ? rec.name : `${rec.from || '?'} → ${rec.to || '?'}`;
+
+  openSheet({
+    title: 'Add the price',
+    confirmLabel: 'Save price',
+    render: () => html`
+      <p class="small muted">
+        <strong>${label}</strong> is confirmed${rec.bookingRef || rec.confirmationNumber
+          ? ` (ref ${rec.bookingRef || rec.confirmationNumber})` : ''},
+        but no fare was recorded — so it is missing from your spend.
+      </p>
+      <div class="amountpad">
+        <${Field} label="Amount" name="cost" type="number" step="0.01" min="0"
+                  inputmode="decimal" placeholder="0.00" autofocus big />
+        <${Field} label="Currency" name="currency" type="select"
+                  value=${rec.currency || state.trip.homeCurrency} options=${currencyOptions()} />
+      </div>
+      <${Field} label="Was this the whole party's booking?" name="group" type="select" value="no"
+                options=${[{ value: 'no', label: 'No — this is my cost' },
+                           { value: 'yes', label: `Yes — split between ${D.headcount(state)}` }]} />`,
+    onSubmit(v) {
+      const cost = parseFloat(v.cost);
+      if (!cost || cost <= 0) { toast('Enter an amount'); return; }
+      const currency = v.currency || state.trip.homeCurrency;
+
+      Store.mutate((d) => {
+        const list = kind === 'stay' ? d.stays : d.transport;
+        const target = list.find((x) => x.id === id);
+        if (target) { target.cost = cost; target.currency = currency; }
+      });
+
+      if (kind === 'stay' && v.group === 'yes') { splitStay(id); return; }
+
+      /* A leg or a solo booking becomes your expense directly. */
+      const expenseId = uid('exp');
+      const home = s().trip.homeCurrency;
+      const share = v.group === 'yes'
+        ? Math.round((cost / D.headcount(s())) * 100) / 100 : cost;
+
+      Store.mutate((d) => {
+        d.expenses.push({
+          id: expenseId, label, category: kind === 'stay' ? 'stay' : 'transport',
+          amount: share, currency, homeAmount: null, homeCurrency: home,
+          rateSnapshotDate: null,
+          date: day(rec.departDateTime || rec.checkIn) || todayISO(),
+          cityId: rec.cityId || '',
+          ...(kind === 'stay' ? { relatedStayId: id } : {}),
+        });
+        Store.logEvent(d, 'expense', kind, id, `Recorded price for ${label}: ${moneyText(share, currency)}`);
+      });
+
+      fxSnapshot(share, currency, home).then((snap) => {
+        if (snap.homeAmount === null) return;
+        Store.mutate((d) => {
+          const saved = d.expenses.find((x) => x.id === expenseId);
+          if (saved) Object.assign(saved, snap);
+        });
+      });
+      toast(`Price recorded for ${label}`);
+    },
+  });
+}
+
+/* ------------------------------------------------------------------- notes */
+
+const noteForm = (note = {}, presetCity) => () => html`
+  <${Field} label="Title" name="title" value=${note.title} autofocus
+            placeholder="e.g. Emergency numbers" />
+  <${Field} label="Note" name="body" type="textarea" rows="5" value=${note.body} />
+  <${Field} label="City" name="cityId" type="select"
+            value=${note.cityId ?? presetCity ?? ''} options=${cityOptions()} />`;
+
+export function addNote(presetCity) {
+  openSheet({
+    title: 'Add a note', confirmLabel: 'Add note', render: noteForm({}, presetCity),
+    onSubmit(v) {
+      if (!v.title?.trim()) return;
+      Store.mutate((d) => d.destinationNotes.push({
+        id: uid('note'), cityId: v.cityId || '', title: v.title.trim(), body: v.body || '',
+      }));
+      toast('Note added');
+    },
+  });
+}
+
+export function editNote(id) {
+  const note = s().destinationNotes.find((n) => n.id === id);
+  if (!note) return;
+  openSheet({
+    title: 'Edit note', render: noteForm(note),
+    secondary: { label: 'Delete', icon: 'trash-2', onClick: () => deleteNote(id) },
+    onSubmit(v) {
+      Store.mutate((d) => {
+        const rec = d.destinationNotes.find((n) => n.id === id);
+        if (rec) Object.assign(rec, { title: v.title, body: v.body, cityId: v.cityId || '' });
+      });
+    },
+  });
+}
+
+export function deleteNote(id) {
+  const note = s().destinationNotes.find((n) => n.id === id);
+  if (!note) return;
+  confirmDestructive({
+    title: 'Delete this note?', what: note.title,
+    onConfirm() {
+      const undo = Store.mutateUndoable((d) => {
+        d.destinationNotes = d.destinationNotes.filter((n) => n.id !== id);
+      });
+      if (undo) toast('Note deleted', { label: 'Undo', onClick: undo });
+    },
+  });
+}
+
+/* F13: the fix for "worth knowing feels like a dead end" — turn a fact into
+   something you are actually going to do. */
+export function extraToTask(extraId) {
+  const extra = s().extras.find((x) => x.id === extraId);
+  if (!extra) return;
+  openSheet({
+    title: 'Turn this into a task',
+    confirmLabel: 'Add task',
+    render: () => html`
+      <${Field} label="Task" name="task" value=${extra.title} autofocus />
+      <div class="formgrid">
+        <${Field} label="Category" name="category" type="select" value="booking"
+                  options=${categories().map((c) => ({ value: c.id, label: c.label }))} />
+        <${Field} label="Due date" name="dueDate" type="date" value="" />
+      </div>
+      <${Field} label="City" name="cityId" type="select" value=${extra.cityId || ''} options=${cityOptions()} />`,
+    onSubmit(v) {
+      if (!v.task?.trim()) return;
+      Store.mutate((d) => d.checklist.push({
+        id: uid('task'), task: v.task.trim(), category: v.category || 'booking',
+        cityId: v.cityId || '', dueDate: v.dueDate || '', done: false, completedDate: null,
+        note: `From "${extra.title}"`,
+      }));
+      toast('Added to your checklist');
+    },
+  });
+}
+
+/* -------------------------------------------------------------- trip / you */
+
+export function editTrip() {
+  const t = s().trip;
+  openSheet({
+    title: 'Trip settings',
+    render: () => html`
+      <${Field} label="Trip name" name="name" value=${t.name} autofocus />
+      <div class="formgrid">
+        <${Field} label="Start date" name="startDate" type="date" value=${day(t.startDate)} />
+        <${Field} label="End date" name="endDate" type="date" value=${day(t.endDate)} />
+      </div>
+      <div class="formgrid">
+        <${Field} label="Budget" name="budget" type="number" step="1" value=${t.budget} />
+        <${Field} label="Home currency" name="homeCurrency" type="select"
+                  value=${t.homeCurrency} options=${currencyOptions()} />
+      </div>
+      <${Field} label="Notes" name="notes" type="textarea" rows="3" value=${t.notes} />`,
+    onSubmit(v) {
+      Store.mutate((d) => Object.assign(d.trip, {
+        name: v.name, startDate: v.startDate, endDate: v.endDate,
+        budget: parseFloat(v.budget) || 0, homeCurrency: v.homeCurrency, notes: v.notes,
+      }));
+    },
+  });
+}
+
+export function editMe() {
+  const me = D.primaryTraveler(s()) || {};
+  openSheet({
+    title: 'About you',
+    render: () => html`
+      <${Field} label="Nickname" name="nickname" value=${me.nickname} autofocus
+                placeholder="what you want to be called" />
+      <div class="formgrid">
+        <${Field} label="Email" name="email" type="email" value=${me.email} />
+        <${Field} label="Age" name="age" type="number" min="0" value=${me.age || ''} />
+      </div>
+      <p class="small muted">
+        Jugni stores a nickname rather than a legal name on purpose, and keeps
+        identity to these three fields.
+      </p>`,
+    onSubmit(v) {
+      Store.mutate((d) => {
+        let me2 = d.travelers.find((t) => t.role === 'primary');
+        if (!me2) { me2 = { id: uid('trav'), role: 'primary', personaProfiles: [] }; d.travelers.push(me2); }
+        Object.assign(me2, { nickname: v.nickname, email: v.email, age: parseInt(v.age, 10) || 0 });
+      });
+    },
+  });
+}
+
+/* --------------------------------------------------------------- share (F5) */
+
+export function share() {
+  const state = s();
+  const dated = D.datedItems(state).length;
+  openSheet({
+    title: 'Share this trip',
+    confirmLabel: 'Done',
+    render: () => html`
+      <div class="rows">
+        <div class="row">
+          <${Icon} name="share-2" />
+          <div class="row__body">
+            <strong>Read-only snapshot</strong>
+            <p class="small muted">One HTML file anyone can open and browse. Nothing to set up,
+            nothing they can change.</p>
+          </div>
+          <button type="button" class="btn" onClick=${downloadSnapshot}>Save</button>
+        </div>
+        <div class="row">
+          <${Icon} name="download" />
+          <div class="row__body">
+            <strong>Forkable copy</strong>
+            <p class="small muted wrap-anywhere">Exports <span class="tkt">${Store.exportName()}</span>.
+            Whoever imports it gets their own independent Jugni for this trip.</p>
+          </div>
+          <button type="button" class="btn" onClick=${exportTrip}>Export</button>
+        </div>
+        <div class="row">
+          <${Icon} name="calendar-days" />
+          <div class="row__body">
+            <strong>Calendar reminders</strong>
+            <p class="small muted">${dated} dated items — departures, check-ins, cancellation
+            deadlines — as an <span class="tkt">.ics</span> your phone can remind you about.</p>
+          </div>
+          <button type="button" class="btn" onClick=${exportICS} disabled=${!dated}>Export</button>
+        </div>
+      </div>`,
+  });
+}
+
+export async function exportTrip() {
+  const name = Store.exportName();
+  const text = Store.exportJSON();
+  if (await shareFile(text, name, 'application/json')) return;
+  save(text, name, 'application/json');
+  toast(`Exported ${name}`);
+}
+
+export function exportICS() {
+  const items = D.datedItems(s());
+  if (!items.length) { toast('Nothing dated to export yet'); return; }
+  const name = `jugni-${(s().trip.name || 'trip').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.ics`;
+  save(buildICS(items, s().trip.name), name, 'text/calendar');
+  toast(`${items.length} items exported — open the file to add them`);
+}
+
+export function downloadSnapshot() {
+  const htmlText = buildSnapshot(s());
+  if (!htmlText) { toast('Snapshots only work from the built single-file app.'); return; }
+  const nick = (D.primaryTraveler(s())?.nickname || 'trip').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  save(htmlText, `jugni-${nick}-snapshot.html`, 'text/html');
+  toast('Snapshot saved — send it to anyone, no setup needed.');
+}
+
+/* The native share sheet where the browser has one: that is what puts a trip
+   into WhatsApp without a download step. */
+async function shareFile(text, filename, type) {
+  try {
+    const file = new File([text], filename, { type });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: s().trip.name || 'My trip' });
+      return true;
+    }
+  } catch { /* user dismissed, or sharing unsupported — fall back to download */ }
+  return false;
+}
+
+export function importTrip() {
+  pick('.json,application/json', (text, name) => {
+    const res = Store.importJSON(text);
+    if (!res.ok) { toast(res.error); return; }
+    toast(`Imported ${name}`);
+    if (Store.takeForkFlag()) editMe();
+  });
+}
+
+/* Two things were hiding under one button. "Clear" restored the built version
+   on reload — the thing most people actually want — while sounding like it
+   deleted everything (feedback cycle 02, C3). */
+export function resetToBuilt() {
+  const stats = D.checklistStats(s());
+  confirmDestructive({
+    title: 'Reset to the trip as built?',
+    what: s().trip.name || 'This trip',
+    detail: `Discards every change made in this browser since the file was generated — `
+      + `${stats.done} completed task${stats.done === 1 ? '' : 's'}, `
+      + `${s().expenses.length} expense${s().expenses.length === 1 ? '' : 's'}, `
+      + `and any edits. The trip returns to exactly how it was built. `
+      + `Export first if you want to keep the current version.`,
+    confirmLabel: 'Reset it',
+    onConfirm: Store.reset,
+  });
+}
+
+/* The way back from a clear. Always available while the file carries a baked
+   trip, so an accidental clear is an inconvenience rather than a loss. */
+export function restoreBuilt() {
+  confirmDestructive({
+    title: 'Restore the trip built into this file?',
+    what: 'Replaces whatever is in this browser now',
+    detail: 'Loads the trip exactly as it was generated. Anything you have '
+      + 'changed since then in this browser is replaced.',
+    confirmLabel: 'Restore it',
+    onConfirm() {
+      if (Store.restoreBuilt()) toast('Trip restored from the built file');
+      else toast('This file has no trip baked into it — use Import instead.');
+    },
+  });
+}
+
+export function clearEverything() {
+  confirmDestructive({
+    title: 'Clear everything?',
+    what: s().trip.name || 'This trip',
+    detail: Store.hasBaked()
+      ? 'Empties this browser copy. The trip stays inside this file, so you can '
+        + 'put it back any time with "Restore the trip built into this file".'
+      : 'Empties this browser copy completely. This file has no trip baked into '
+        + 'it, so nothing can be restored — export first.',
+    confirmLabel: 'Clear everything',
+    onConfirm: Store.clearAll,
+  });
+}

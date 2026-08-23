@@ -1,0 +1,7 @@
+circle-flags
+============
+
+Licence: MIT
+Source:  https://github.com/HatScripts/circle-flags
+
+Licence text not found in the package; see https://github.com/HatScripts/circle-flags.

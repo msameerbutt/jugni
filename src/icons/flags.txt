@@ -1,0 +1,21 @@
+# Country flags to vendor into src/icons/flags/ (`make icons`).
+# ISO 3166-1 alpha-2 codes, lowercase, one per line. Source: circle-flags
+# (MIT) — circular SVGs, which stay legible at 16-24px beside a city name in a
+# way rectangular flags do not.
+#
+# A build embeds only the flags for countries in that trip, so this list can
+# grow freely. `make icons FLAGS=all` vendors the whole set instead.
+
+au   # home country for the current trip
+tr   # Istanbul
+de   # Berlin
+dk   # Copenhagen
+no   # Oslo
+se   # Kiruna / Abisko
+fi   # Helsinki
+ee   # Tallinn
+pl   # Warsaw
+hu   # Budapest
+sk   # Bratislava
+at   # Vienna
+cz   # Prague

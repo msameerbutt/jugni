@@ -47,18 +47,23 @@ that is a project rule, not a preference. See AGENTS.md.
 make help                 # all targets
 make build                # bundle src/ into one self-contained file
 make check                # verify it: JS parses, runs offline in jsdom, no remote assets
+make icons                # vendor icon/flag SVGs from the image into src/icons/
 make validate TRIP=x      # check a trip's input.json against the schema
 make shell                # a shell inside the container
 make run CMD="..."        # anything else, inside the container
 ```
 
-Source stays multi-file and readable (`src/css`, `src/js`, numbered by load
-order). "Single file" describes the build *output*, never the source.
+Source stays multi-file and readable — `src/css` numbered by load order,
+`src/app` as Preact + htm ES modules bundled by esbuild. "Single file"
+describes the build *output*, never the source.
 
 ```
-skills/    instruction files for the agent — intake, convert, personas, quality bar
-src/       app shell source: css/ js/ templates/ fonts/
-scripts/   Python build tooling
+skills/       instruction files for the agent — intake, convert, personas, quality bar
+src/          app source: css/ app/ templates/ fonts/ icons/
+default.json  standard checklist categories and items merged into every trip
+feedback/     review cycles, originals kept verbatim
+scripts/      Python build tooling
+src/icons/ vendored Lucide icons + circle-flags, with their licences
 raw/       your trip's raw data — gitignored, contains real PII
 trips/     generated trips and built apps — gitignored
 docs/      the spec

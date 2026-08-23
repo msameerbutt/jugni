@@ -8,11 +8,12 @@ IDs, ISO-8601 datetimes carrying a real UTC offset, confirmed-vs-candidate).
 
 import re
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.3"
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?([+-]\d{2}:\d{2}|Z)$")
 CURRENCY_RE = re.compile(r"^[A-Z]{3}$")
+COUNTRY_CODE_RE = re.compile(r"^[a-z]{2}$")
 
 TRANSPORT_MODES = {"flight", "train", "ferry", "car", "bus", "other"}
 TRAVELER_ROLES = {"primary", "companion"}
@@ -28,6 +29,9 @@ COLLECTIONS = {
     },
     "cities": {
         "id": (True, "str"), "name": (True, "str"), "country": (False, "str"),
+        # 1.1: the flag lookup wants an unambiguous code, not a country name
+        # spelled six different ways across booking platforms.
+        "countryCode": (False, "countrycode"),
         "lat": (False, "num"), "lon": (False, "num"),
         "arriveDate": (False, "date"), "departDate": (False, "date"), "notes": (False, "str"),
     },
@@ -36,6 +40,8 @@ COLLECTIONS = {
         "departDateTime": (False, "datetime"), "arriveDateTime": (False, "datetime"),
         "bookingRef": (False, "str"), "cost": (False, "num"), "currency": (False, "currency"),
         "notes": (False, "str"),
+        "homeAmount": (False, "num"), "homeCurrency": (False, "currency"),
+        "rateSnapshotDate": (False, "date"), "sourceFile": (False, "str"),
     },
     "stays": {
         "id": (True, "str"), "cityId": (True, "ref:cities"), "name": (True, "str"),
@@ -43,11 +49,20 @@ COLLECTIONS = {
         "checkOut": (False, "date_or_datetime"), "confirmationNumber": (False, "str"),
         "cost": (False, "num"), "currency": (False, "currency"),
         "cancellationDeadline": (False, "date_or_datetime"), "notes": (False, "str"),
+        "homeAmount": (False, "num"), "homeCurrency": (False, "currency"),
+        "rateSnapshotDate": (False, "date"),
+        # 1.3: the file this record was extracted from. Spec §12 wants the
+        # pointer to exist; cycle 02 C4 wants it out of the way, so it is a
+        # field the UI can collect in one place rather than prose in `notes`.
+        "sourceFile": (False, "str"),
     },
     "checklist": {
         "id": (True, "str"), "task": (True, "str"), "category": (False, "str"),
         "cityId": (False, "ref:cities"), "dueDate": (False, "date"),
         "done": (False, "bool"), "completedDate": (False, "date"),
+        # 1.1: marks an item instantiated from default.json, so deleting it
+        # can be remembered rather than undone on the next load.
+        "source": (False, "str"), "note": (False, "str"),
     },
     "expenses": {
         "id": (True, "str"), "label": (False, "str"), "category": (False, "str"),
@@ -55,6 +70,9 @@ COLLECTIONS = {
         "homeAmount": (False, "num"), "homeCurrency": (False, "currency"),
         "rateSnapshotDate": (False, "date"), "date": (False, "date"),
         "cityId": (False, "ref:cities"),
+        # 1.1: set when this expense is the traveller's share of a group
+        # booking, so the split is offered once and not twice.
+        "relatedStayId": (False, "ref:stays"),
     },
     "destinationNotes": {
         "id": (True, "str"), "cityId": (False, "ref:cities"),
@@ -67,6 +85,9 @@ COLLECTIONS = {
     "extras": {
         "id": (True, "str"), "cityId": (False, "ref:cities"), "title": (True, "str"),
         "displayHint": (False, "hint"), "content": (False, "str"),
+        # 1.1: an extra with nowhere to go is a dead end. Links give the
+        # reader something to do with the fact.
+        "links": (False, "links"),
     },
 }
 
@@ -75,6 +96,12 @@ TRIP_FIELDS = {
     "startDate": (True, "date"), "endDate": (True, "date"),
     "homeCurrency": (True, "currency"), "budget": (False, "num"),
     "notes": (False, "str"), "theme": (False, "theme"),
+    # 1.2: rates implied by the traveller's own booking documents, used only
+    # when a live rate is unavailable — which, opened from file:// on patchy
+    # wifi, is the normal case rather than the exception.
+    "rateHints": (False, "ratehints"),
+    "rateHintsDate": (False, "date"),
+    "rateHintsSource": (False, "str"),
 }
 
 
@@ -85,6 +112,7 @@ def empty_doc() -> dict:
             "homeCurrency": "", "budget": 0, "notes": "", "theme": "light",
         },
         **{key: [] for key in COLLECTIONS},
+        "suppressed": [],
     }
 
 
@@ -113,6 +141,26 @@ def _check_value(kind, value, ids, errors, warnings, where):
             errors.append(f"{where}: '{value}' must be YYYY-MM-DD or ISO-8601 with a UTC offset")
     elif kind == "currency" and not CURRENCY_RE.match(str(value)):
         errors.append(f"{where}: '{value}' is not a 3-letter ISO currency code")
+    elif kind == "countrycode" and not COUNTRY_CODE_RE.match(str(value)):
+        errors.append(f"{where}: '{value}' is not a lowercase ISO 3166-1 alpha-2 code")
+    elif kind == "ratehints":
+        if not isinstance(value, dict):
+            errors.append(f"{where}: expected an object of currency -> rate")
+        else:
+            for code, r in value.items():
+                if not CURRENCY_RE.match(str(code)):
+                    errors.append(f"{where}.{code}: not a 3-letter ISO currency code")
+                elif not isinstance(r, (int, float)) or r <= 0:
+                    errors.append(f"{where}.{code}: rate must be a positive number")
+    elif kind == "links":
+        if not isinstance(value, list):
+            errors.append(f"{where}: expected a list of {{label, url}} objects")
+        else:
+            for i, link in enumerate(value):
+                if not isinstance(link, dict) or not link.get("url"):
+                    errors.append(f"{where}[{i}]: each link needs a url")
+                elif not str(link["url"]).startswith(("http://", "https://")):
+                    errors.append(f"{where}[{i}]: '{link['url']}' is not an http(s) URL")
     elif kind == "mode" and value not in TRANSPORT_MODES:
         errors.append(f"{where}: mode '{value}' not one of {sorted(TRANSPORT_MODES)}")
     elif kind == "role" and value not in TRAVELER_ROLES:
@@ -155,6 +203,12 @@ def validate(doc) -> tuple[list[str], list[str]]:
         )
     if trip.get("startDate") and trip.get("endDate") and trip["endDate"] < trip["startDate"]:
         errors.append("trip.endDate is before trip.startDate")
+
+    if "suppressed" in doc:
+        if not isinstance(doc["suppressed"], list):
+            errors.append("'suppressed' must be a list of default ids")
+        elif any(not isinstance(x, str) for x in doc["suppressed"]):
+            errors.append("'suppressed' must contain only string ids")
 
     # Collect ids first so cross-references can be checked in one pass.
     ids: dict[str, set] = {}

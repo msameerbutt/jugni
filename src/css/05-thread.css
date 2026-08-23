@@ -1,107 +1,60 @@
-/* "The manifest thread" — spec §11's signature element.
-   The Overview is not a card grid: it's one connected route line, stop after
-   stop, each stop a ticket stub. Structural, not decorative. */
+/* "The manifest thread" — spec §11's signature element. The Overview is one
+   connected route line of ticket stubs, not a grid of cards. */
 
-.thread { position: relative; padding-left: 34px; }
-
-/* The line itself. */
+.thread { position: relative; padding-left: 36px; }
 .thread::before {
-  content: "";
-  position: absolute;
-  left: 11px; top: 12px; bottom: 12px;
-  width: 2px;
-  background: linear-gradient(
-    to bottom,
-    var(--line) 0,
-    var(--line) 100%
-  );
+  content: ""; position: absolute; left: 12px; top: 14px; bottom: 14px;
+  width: 2px; background: var(--line-strong);
 }
 
 .thread__stop { position: relative; margin-bottom: var(--space-4); }
 .thread__stop:last-child { margin-bottom: 0; }
 
-/* Node on the line. */
 .thread__node {
-  position: absolute;
-  left: -29px; top: 22px;
-  width: 12px; height: 12px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 2px solid var(--line);
-  z-index: 1;
+  position: absolute; left: -30px; top: 22px;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--line-strong); z-index: 1;
+  transition: all var(--dur) var(--ease);
 }
 .thread__stop--done .thread__node { background: var(--brass); border-color: var(--brass); }
-.thread__stop--now  .thread__node {
-  background: var(--transit-blue);
-  border-color: var(--transit-blue);
-  box-shadow: 0 0 0 4px var(--transit-blue-wash);
+.thread__stop--now .thread__node {
+  background: var(--transit-blue); border-color: var(--transit-blue);
+  box-shadow: 0 0 0 5px var(--transit-blue-wash);
 }
 
-/* Travelled portion of the line, drawn over the base line. */
-.thread__progress {
-  position: absolute;
-  left: 11px; top: 12px;
-  width: 2px;
-  background: var(--brass);
-  transition: height var(--dur) var(--ease);
-}
+.stop { display: block; text-decoration: none; color: inherit; transition: border-color var(--dur) var(--ease); }
+.stop:hover { border-color: var(--accent); }
+.stop__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.stop__city { display: flex; align-items: center; gap: var(--space-2); font-family: var(--font-display); font-size: var(--step-1); font-weight: 600; min-width: 0; }
+.stop__country { font-size: var(--step--1); color: var(--ink-soft); font-weight: 400; font-family: var(--font-body); }
+.stop__dates { font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-soft); white-space: nowrap; }
 
-/* A transit leg drawn between two stops. */
+/* F8: every stop shows the same columns. A missing figure reads as zero, and
+   a column that disappears reads as a bug. */
+.stop__facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  gap: var(--space-3); margin-top: var(--space-3);
+  padding-top: var(--space-3); border-top: 1px solid var(--line);
+}
+.fact { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.fact__k { font-size: var(--step--2); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-faint); font-weight: 600; }
+.fact__v { font-family: var(--font-mono); font-size: var(--step--1); }
+.fact__v--zero { color: var(--ink-faint); }
+.fact__v--group { color: var(--ink-soft); }
+
+/* A transit leg, drawn between two stops. */
 .leg {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  margin: calc(var(--space-3) * -1) 0 var(--space-3);
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  margin: calc(var(--space-2) * -1) 0 var(--space-3);
   padding: var(--space-2) var(--space-3);
-  font-size: var(--step--1);
-  color: var(--ink-soft);
+  font-size: var(--step--1); color: var(--ink-soft);
 }
-.leg__mode {
-  display: inline-flex; align-items: center; gap: var(--space-1);
-  color: var(--transit-blue);
-  font-weight: 600;
-}
+.leg__mode { display: inline-flex; align-items: center; gap: 5px; color: var(--transit-blue); font-weight: 600; }
 .leg__time { font-family: var(--font-mono); }
 
-.stop__head {
-  display: flex; flex-wrap: wrap; align-items: baseline;
-  justify-content: space-between; gap: var(--space-2);
-}
-.stop__city { font-family: var(--font-display); font-size: var(--step-1); font-weight: 600; }
-.stop__dates { font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-soft); }
-.stop__facts { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); }
-.fact { display: flex; flex-direction: column; }
-.fact__k { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
-.fact__v { font-family: var(--font-mono); font-size: var(--step--1); }
-
-/* The same thread, in miniature, as the nav's progress indicator. */
-.rail__thread {
-  display: flex; align-items: center; gap: 4px;
-  padding: var(--space-2) var(--space-3);
-  border-top: 1px solid var(--line);
-}
-.rail__thread-line {
-  position: relative;
-  flex: 1; height: 2px;
-  background: var(--line);
-  border-radius: 2px;
-}
-.rail__thread-fill {
-  position: absolute; inset: 0 auto 0 0;
-  background: var(--brass);
-  border-radius: 2px;
-  transition: width var(--dur) var(--ease);
-}
-.rail__thread-dot {
-  position: absolute; top: 50%;
-  width: 7px; height: 7px; margin-left: -3px;
-  transform: translateY(-50%);
-  border-radius: 50%;
-  background: var(--transit-blue);
-  transition: left var(--dur) var(--ease);
-}
-.rail__thread-label {
-  font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-soft); white-space: nowrap;
-}
+/* The thread in miniature, as the nav's progress indicator. */
+.rail__thread { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-3) 0; border-top: 1px solid var(--line); }
+.rail__thread-line { position: relative; flex: 1; height: 3px; background: var(--line-strong); border-radius: 2px; }
+.rail__thread-fill { position: absolute; inset: 0 auto 0 0; background: var(--brass); border-radius: 2px; transition: width var(--dur-slow) var(--ease-out); }
+.rail__thread-dot { position: absolute; top: 50%; width: 8px; height: 8px; margin-left: -4px; transform: translateY(-50%); border-radius: 50%; background: var(--transit-blue); box-shadow: 0 0 0 3px var(--transit-blue-wash); }
+.rail__thread-label { font-family: var(--font-mono); font-size: var(--step--2); color: var(--ink-faint); white-space: nowrap; }

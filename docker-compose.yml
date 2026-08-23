@@ -14,6 +14,10 @@ services:
     environment:
       - PYTHONPATH=/jugni
       - TZ=${TZ:-UTC}
+      # The container runs as the invoking user, who has no home directory in
+      # the image. Without these, npm and node fail on an unwritable /.npm.
+      - HOME=/tmp
+      - npm_config_cache=/tmp/.npm
     # Keeps generated files owned by the invoking user rather than root.
     user: "${JUGNI_UID:-1000}:${JUGNI_GID:-1000}"
     stdin_open: true

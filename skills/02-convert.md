@@ -19,8 +19,48 @@ direction. Never hand-edit an existing `input.json` to force a change through.
 
 ## The schema
 
-See `docs/jugni-spec.md` §4 for the authoritative shape. `make validate` checks
-it mechanically — run it, and read the warnings, which are usually real.
+See `docs/jugni-spec.md` §4 for the authoritative shape (currently **1.1**).
+`make validate` checks it mechanically — run it, and read the warnings, which
+are usually real.
+
+### What 1.3 asks of you
+
+- **`cities[].countryCode`** — ISO 3166-1 alpha-2, lowercase. Set it. The flag
+  lookup falls back to matching the country *name*, and booking platforms spell
+  the same country six different ways.
+- **`extras[].links`** — `[{ label, url }]`. Fill these in while you have the
+  raw material open. A fact with nowhere to go is a dead end: a ferry note
+  should link the operator, a scenic-railway note should link the timetable.
+  This is the single highest-value thing you can add to an `extras` record.
+- **`expenses[].relatedStayId`** — leave it alone. The app sets it when the
+  traveller splits a group booking into their own share.
+- **`stays[].sourceFile` / `transport[].sourceFile`** — the filename the record
+  was read from, as its own field. Do **not** append "source: X.pdf" to
+  `notes`: that put it on screen under every booking, which is noise. The app
+  collects these in one place under Trip data.
+- **`trip.rateHints`** — see "Record the document's own exchange rate" below.
+
+### Do not restate the standard catalogue
+
+`default.json` already supplies the checklist items every trip wants —
+passport validity, insurance, adapters, medicine, chargers, offline maps. They
+are merged in automatically and filtered by persona and destination.
+
+Write only what the **raw data** tells you: the bookings that need chasing, the
+gaps you found, the deadlines that are real for this trip. "Book accommodation
+in Kiruna (17–20 Sep) — nothing booked" is yours. "Pack a shaver" is not.
+
+The merge skips a default whose meaningful words are already covered by one of
+your items, so a near-duplicate is usually harmless — but writing a generic item
+the catalogue already owns is still noise, and it hides the specific one.
+
+### Titles are short
+
+`extras[].title` and `destinationNotes[].title` render as card headings in
+narrow columns. Keep them to about **four words**. "September climate averages
+(not a forecast)" wrapped badly and should have been "September climate
+averages", with "not a forecast" as the first line of the body. Detail belongs
+in the body, where it has room.
 
 ## The judgement calls
 
@@ -61,6 +101,25 @@ ISO 8601 with an explicit UTC offset in the **local time of that location**:
 A 12-city multi-timezone trip is exactly where this bites. `make validate`
 rejects a bare datetime, on purpose.
 
+### Record the document's own exchange rate
+
+Booking confirmations routinely print both the local charge and a
+home-currency equivalent — *"Price AUD 576 … (for 5 guests) DKK 2,628"*. Do not
+store that estimate as `amount`/`currency` (see below), but **do** capture what
+it implies:
+
+- `stays[].homeAmount` / `homeCurrency` / `rateSnapshotDate` when a document
+  states the equivalent outright.
+- `trip.rateHints` — `{ "EUR": 1.63813, "DKK": 0.21918 }`, home-currency units
+  per one foreign unit — with `rateHintsDate` and a `rateHintsSource` naming
+  the documents it came from.
+
+This is what makes every figure readable in the home currency with **no network
+at all**, which is the normal condition for a file opened from `file://`.
+Cross-check the implied rates against each other: two documents from the same
+provider in the same period should agree closely, and a large discrepancy means
+you have misread one of them.
+
 ### Currency authority
 
 Booking documents often show both an actual charge in the property's currency
@@ -78,6 +137,32 @@ actual itinerary** — the single source of truth. When part of a group diverges
 mid-trip (a companion's hostel in one city while the primary's flights show
 them elsewhere), log that as an `extras[]` note tied to the relevant city.
 Do not model a second official itinerary. Per-traveller itineraries are Phase 3.
+
+### A booking with no price is a gap, not a zero
+
+If a ticket or confirmation never states a fare — this reference trip's Turkish
+Airlines ticket does not — leave `cost` unset. **Never write `0`, and never
+create a zero-value expense to stand in for it.** The app surfaces those
+bookings in red and offers to record the price. A fabricated zero would make
+the expense count and the category breakdown quietly untrue, which is worse
+than a visible gap.
+
+### Destinations, not cities
+
+The user-facing word is **Destination**, because a stop is not always one city:
+this trip has "Kiruna / Abisko" and a Helsinki + Tallinn day. The schema
+collection is still `cities[]` — do not rename it, every `cityId` depends on it
+— but write `name` values that describe the stop honestly rather than forcing
+them into a single city name.
+
+### Keep titles short
+
+`extras[].title` and `destinationNotes[].title` render as card headings in
+narrow columns, and trip-wide extras are the **exception**, not the norm.
+Country-level facts — food, tipping, climate averages — belong to the
+destinations they describe, one record each, not one trip-wide card listing
+four countries. A record with no `cityId` should be something that genuinely
+spans the whole route, like a visa rule.
 
 ### Where unmodeled facts go
 

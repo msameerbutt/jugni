@@ -24,7 +24,7 @@ INPUT ?= trips/$(TRIP)/input.json
 OUT   ?= trips/$(TRIP)/jugni.html
 FROM  ?=
 
-.PHONY: help build check generate update validate shell run down rebuild image clean
+.PHONY: help build check icons generate update validate shell run down rebuild image clean
 
 help: ## Show this help
 	@echo "Jugni — make targets (all run inside Docker)"
@@ -46,6 +46,9 @@ build: image ## Bundle src/ into a single self-contained app file (empty shell u
 
 check: image ## Verify a built file: JS parses, no external assets, no unreplaced placeholders
 	$(RUN) python scripts/check.py --file "$(OUT)"
+
+icons: image ## Vendor icon/flag SVGs from the image into src/icons/ (FLAGS=all for every flag)
+	$(RUN) python scripts/icons.py --flags "$(FLAGS)"
 
 generate: image ## Intake+Convert raw data into input.json, then build that trip's app
 	$(RUN) python scripts/generate.py --trip "$(TRIP)" --from "$(FROM)"

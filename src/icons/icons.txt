@@ -1,0 +1,80 @@
+# Lucide icon names to vendor into src/icons/lucide/ (`make icons`).
+# One name per line, exactly as Lucide names its files, without the .svg.
+# Browse the set at https://lucide.dev/icons — licence ISC, no attribution
+# required in-product.
+#
+# Only icons listed here are vendored, and only vendored icons that are
+# actually referenced end up in a built file. Adding a name here costs nothing
+# until something uses it.
+
+# --- Navigation: one per screen ---
+calendar-days
+route
+list-checks
+building-2
+wallet
+cloud-sun
+compass
+chart-column
+database
+
+# --- Transport modes ---
+plane
+train-front
+ship
+car
+bus
+circle-dot
+
+# --- Actions ---
+plus
+pencil
+trash-2
+share-2
+download
+upload
+undo-2
+refresh-cw
+search
+filter
+settings
+external-link
+x
+check
+
+# --- Disclosure and movement ---
+chevron-down
+chevron-right
+chevron-left
+chevrons-down-up
+arrow-right
+
+# --- Status ---
+triangle-alert
+info
+circle-check
+clock
+wifi-off
+sparkles
+
+# --- Checklist categories (default.json) ---
+heart-pulse
+plug
+smartphone
+backpack
+utensils
+key
+umbrella
+book-open
+camera
+
+# --- Trip objects ---
+bed-double
+map-pin
+luggage
+file-text
+credit-card
+pill
+shirt
+sun
+moon
