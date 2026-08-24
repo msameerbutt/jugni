@@ -246,7 +246,7 @@ function StayCard({ stay, state }) {
   const today = todayISO();
   const passed = stay.cancellationDeadline && day(stay.cancellationDeadline) < today;
   const alreadySplit = D.stayIsSplit(state, stay.id);
-  const people = D.headcount(state);
+  const people = D.partySize(state, stay);
 
   return html`
     <div class="stub" style="margin-bottom:var(--space-3)">

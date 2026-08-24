@@ -18,9 +18,22 @@ or a JSON file.** They talk; you structure.
 make generate TRIP=<slug>
 ```
 
-That runs the extractors (OCR, PDF text, spreadsheets, saved pages) and writes
-`trips/<slug>/intake/extracts.md`. Read that, not the originals. Then follow
-`02-convert.md`.
+Run it once to create the trip's folders, then again once files are in
+`trips/<slug>/raw/`. It runs the extractors (OCR, PDF text, spreadsheets, saved
+pages) and writes `trips/<slug>/intake/extracts.md`. Read that, not the
+originals. Then follow `02-convert.md`.
+
+**Intake accumulates.** Each file is read once, keyed by its contents, and its
+extract is kept — so the traveller may empty `raw/` afterwards, and a re-run
+only reads what is new or has changed. A section marked `archived` means the
+original is gone and the extract is all that survives of it; treat it as the
+source of truth, but do not tell the traveller to open a file they no longer
+have.
+
+Check the run's own report before reading the extracts. A file listed as
+`unhandled`, `empty`, or with a suspiciously small character count did not
+survive extraction, and its facts are simply absent from `extracts.md` — that
+is a gap to raise, not a file to quietly skip.
 
 **Pre-digested path.** They ran their material through some other AI tool and
 have one plain-text summary. Same command, `FROM=path/to/summary.txt`. Do not

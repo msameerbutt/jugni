@@ -323,6 +323,37 @@ function goto(route) {
     }
   }
 
+  /* A bill splits by who was in the room (schema 1.4).
+
+     A trip is not one party size: five share the city apartments and three go
+     north. Dividing by the traveller count understated a share on every
+     booking that was not the whole group, and it did so silently — the number
+     looked plausible either way. Assert the offer matches the booking. */
+  {
+    const baked = JSON.parse(doc.getElementById('jugni-data')?.textContent?.trim() || '{}');
+    const withGuests = (baked.stays || []).filter((x) => Number(x.guests) > 0
+      && Number(x.cost) > 0 && Number(x.guests) !== (baked.travelers || []).length);
+
+    if (!withGuests.length) {
+      console.log('  --    stay split: no booking here differs from the traveller count');
+    } else {
+      const wrong = [];
+      for (const stay of withGuests) {
+        await goto(`destinations/${stay.cityId}`);
+        await wait(120);
+        const card = [...doc.querySelectorAll('.stub')]
+          .find((el) => (el.textContent || '').includes(stay.name));
+        const btn = card && [...card.querySelectorAll('button')]
+          .find((b) => /Add my share/.test(b.textContent || ''));
+        if (btn && !btn.textContent.includes(`÷${stay.guests}`)) {
+          wrong.push(`${stay.name}: offers "${btn.textContent.trim()}" for ${stay.guests} guests`);
+        }
+      }
+      if (wrong.length) fail(`stay split divides by the wrong party: ${wrong.join('; ')}`);
+      else console.log(`  ok    stay split follows each booking's own guest count`);
+    }
+  }
+
   /* A multi-leg ticket is priced once.
 
      Melbourne to Lahore is four flights on one reference and one receipt, so

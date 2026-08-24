@@ -245,7 +245,7 @@ export function splitStay(stayId) {
   const state = s();
   const stay = state.stays.find((x) => x.id === stayId);
   if (!stay) return;
-  const people = D.headcount(state);
+  const people = D.partySize(state, stay);
   const home = state.trip.homeCurrency;
 
   openSheet({
@@ -258,7 +258,9 @@ export function splitStay(stayId) {
       </p>
       <div class="formgrid">
         <${Field} label="Split between" name="people" type="number" min="1" value=${people}
-                  hint=${`${people} travellers on this trip`} />
+                  hint=${Number(stay.guests) > 0
+                    ? `this room was booked for ${people}`
+                    : `${people} travellers on this trip`} />
         <${Field} label="Or enter your share" name="override" type="number" step="0.01"
                   placeholder="optional" hint=${`in ${stay.currency || home}`} />
       </div>`,
@@ -336,7 +338,8 @@ export function addPriceFor(kind, id) {
       </div>
       <${Field} label="Was this the whole party's booking?" name="group" type="select" value="no"
                 options=${[{ value: 'no', label: 'No — this is my cost' },
-                           { value: 'yes', label: `Yes — split between ${D.headcount(state)}` }]} />`,
+                           { value: 'yes', label: `Yes — split between ${
+                             kind === 'stay' ? D.partySize(state, rec) : D.headcount(state)}` }]} />`,
     onSubmit(v) {
       const cost = parseFloat(v.cost);
       if (!cost || cost <= 0) { toast('Enter an amount'); return; }

@@ -8,7 +8,7 @@ IDs, ISO-8601 datetimes carrying a real UTC offset, confirmed-vs-candidate).
 
 import re
 
-SCHEMA_VERSION = "1.3"
+SCHEMA_VERSION = "1.4"
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?([+-]\d{2}:\d{2}|Z)$")
@@ -51,6 +51,11 @@ COLLECTIONS = {
         "cancellationDeadline": (False, "date_or_datetime"), "notes": (False, "str"),
         "homeAmount": (False, "num"), "homeCurrency": (False, "currency"),
         "rateSnapshotDate": (False, "date"),
+        # 1.4: how many people this room was booked for. A trip is not one
+        # party size — five share the apartments and three go north — so
+        # splitting a bill by the traveller count silently understates a
+        # share on every booking that is not the whole group.
+        "guests": (False, "num"),
         # 1.3: the file this record was extracted from. Spec §12 wants the
         # pointer to exist; cycle 02 C4 wants it out of the way, so it is a
         # field the UI can collect in one place rather than prose in `notes`.

@@ -19,11 +19,11 @@ direction. Never hand-edit an existing `input.json` to force a change through.
 
 ## The schema
 
-See `docs/jugni-spec.md` §4 for the authoritative shape (currently **1.1**).
+See `docs/jugni-spec.md` §4 for the authoritative shape (currently **1.4**).
 `make validate` checks it mechanically — run it, and read the warnings, which
 are usually real.
 
-### What 1.3 asks of you
+### What 1.4 asks of you
 
 - **`cities[].countryCode`** — ISO 3166-1 alpha-2, lowercase. Set it. The flag
   lookup falls back to matching the country *name*, and booking platforms spell
@@ -38,6 +38,12 @@ are usually real.
   was read from, as its own field. Do **not** append "source: X.pdf" to
   `notes`: that put it on screen under every booking, which is noise. The app
   collects these in one place under Trip data.
+- **`stays[].guests`** — how many people the room was booked for, straight off
+  the confirmation ("Number of guests: 3 adults"). A trip is not one party
+  size: the same group can take a five-person apartment in one city and a
+  three-bed room in another. Without it the app divides every bill by the
+  traveller count, which understates a share on any booking that was not the
+  whole group — and the wrong number looks just as plausible as the right one.
 - **`trip.rateHints`** — see "Record the document's own exchange rate" below.
 
 ### Do not restate the standard catalogue
@@ -87,6 +93,14 @@ actually booked, plus the actual reservation.
   not booked"*. Never give a candidate the same structural weight as a
   reservation. Someone will read this at a check-in desk.
 
+**A bed that was never booked is not a candidate.** Staying at a relative's
+house has no confirmation number and no rate, but it is certain, and the
+address is exactly what you want on screen at midnight in an arrivals hall. It
+belongs in `stays[]` with no `confirmationNumber` and no `cost`, and a `notes`
+line saying it is family accommodation. `make validate` will suggest moving it
+to `extras[]` — that warning is aimed at the three-hotel-links case, so say why
+you kept it rather than silently ignoring it.
+
 ### Datetimes carry their offset
 
 `transport[].departDateTime`, `arriveDateTime`, `stays[].checkIn`, `checkOut`:
@@ -130,6 +144,15 @@ store the document's home-currency estimate — it is a snapshot from whenever
 that document was generated, and it will not match what the card was billed.
 `homeAmount` is computed by the app under the snapshot rule (spec §4).
 
+The document usually tells you outright which is which, and two confirmations
+from the same platform can differ. Look for a *"Currency & Exchange Rate Info"*
+block: *"you'll pay in SEK … the amount displayed in AUD is just an estimate"*
+means SEK is the charge and the AUD figure is a dated snapshot for
+`homeAmount`. Where there is no such block and the price is itemised in the
+home currency instead — base, VAT, city tax, all in AUD — the home currency is
+what the card sees, and the foreign total marked *approx.* is the estimate.
+Read the block, not the platform's name.
+
 ### One itinerary, not a branching tree
 
 `cities[]` / `transport[]` / `stays[]` represent **the primary traveller's
@@ -137,6 +160,14 @@ actual itinerary** — the single source of truth. When part of a group diverges
 mid-trip (a companion's hostel in one city while the primary's flights show
 them elsewhere), log that as an `extras[]` note tied to the relevant city.
 Do not model a second official itinerary. Per-traveller itineraries are Phase 3.
+
+**A booking that looks impossible is usually someone else's.** Two airport
+transfers on one morning, the second arriving after the primary traveller's
+flight has already left, is not a double-booking — it is the rest of the party
+leaving later. Before calling anything a clash, check whether it fits a
+*different* traveller. Say what you found and let the traveller decide; do not
+recommend cancelling a confirmed booking on a timing inference, because the
+group's other flights are usually not in the raw folder at all.
 
 ### A booking with no price is a gap, not a zero
 
@@ -146,6 +177,26 @@ create a zero-value expense to stand in for it.** The app surfaces those
 bookings in red and offers to record the price. A fabricated zero would make
 the expense count and the category breakdown quietly untrue, which is worse
 than a visible gap.
+
+**One ticket covering several legs is priced once.** Melbourne to Lahore is
+four flights on one reference and one receipt that never splits the fare by
+hop. Put the booking total on the first leg with a `notes` line saying what it
+covers, and leave the siblings unset — the app reads the shared `bookingRef`
+and stops asking about the rest. Do not spread an invented per-leg share.
+
+### A reused spreadsheet carries last year's answers
+
+Planning sheets get copied forward. The giveaway is a date whose weekday does
+not match: *"15 Dec Mon"* is a Monday in one year and a Tuesday in the next, so
+check the pair before trusting either. Ticked items are the same trap — a list
+that arrives mostly complete, for a trip that has not started, is usually the
+previous trip's state rather than this one's.
+
+When the two readings disagree, **import the items and drop the dates**, and
+say so in an `extras[]` note. A task with no due date is a small loss; a task
+pre-ticked before departure hides work the traveller still has to do, and a
+confidently wrong date sends them somewhere on the wrong day. A mixed list —
+some ticked, some not — is the opposite signal, and is worth trusting.
 
 ### Destinations, not cities
 
@@ -179,6 +230,11 @@ Only when nothing genuinely fits does it become an `extras[]` record. Set
 or `auto` when you are not sure. The app renders each hint through a real
 component, so a good hint is the difference between a native-looking card and a
 dumped text block.
+
+**`table` splits each line on the first `:` or `|` to make key/value rows**, so
+it suits `Booking ref: EGP2BY` and ruins `05:00 - ref 174182531`, which renders
+as `0500`. If any line carries a time, a ratio or a URL, use `list`. The colon
+disappears silently and only shows up when you read the built page.
 
 ### IDs are permanent
 

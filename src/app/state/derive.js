@@ -7,6 +7,16 @@ export const primaryTraveler = (s) =>
 
 export const headcount = (s) => Math.max(1, s.travelers.length);
 
+/* How many people a bill divides between (schema 1.4).
+
+   A trip is not one party size. Five share the city apartments and three go
+   north to Abisko, so dividing every booking by the traveller count quietly
+   understates a share on the ones that were never for the whole group. The
+   booking's own `guests` is the answer whenever the document stated it;
+   headcount is only the fallback for a record that predates the field. */
+export const partySize = (s, stay) =>
+  Math.max(1, Number(stay?.guests) > 0 ? Number(stay.guests) : headcount(s));
+
 /* "Sameer's" — whose Jugni this is. Empty when no nickname is set, so the
    wordmark falls back to plain "Jugni" rather than reading "'s Jugni".
 

@@ -3,7 +3,7 @@
    detect drift instead of misreading it. */
 import { uid } from '../lib/util.js';
 
-export const SCHEMA_VERSION = '1.3';
+export const SCHEMA_VERSION = '1.4';
 
 export const COLLECTIONS = [
   'travelers', 'cities', 'transport', 'stays', 'checklist',
