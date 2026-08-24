@@ -7,6 +7,7 @@ that three name spellings are one person is the Convert Skill's job, done by
 an agent reading these extracts. Nothing here guesses.
 """
 
+import re
 from pathlib import Path
 
 TEXT_SUFFIXES = {".txt", ".md", ".text", ".log", ".json"}
@@ -33,28 +34,68 @@ def extract(path: Path) -> tuple[str, str]:
             return "html", _html(path)
         if suffix in TEXT_SUFFIXES:
             return "text", path.read_text(encoding="utf-8", errors="replace")
+        # No suffix, or one nobody thought of. A traveller writing their plan
+        # into a file called "overall plan" and dropping it in is the most
+        # natural thing in the world, and refusing it on a missing extension
+        # threw the whole file away behind a cheerful "ok". Sniff instead: if
+        # it decodes as text, it is text.
+        text = _as_text(path)
+        if text is not None:
+            return "text", text
     except Exception as exc:                      # noqa: BLE001 - reported, not raised
         return "error", f"[could not read this file: {type(exc).__name__}: {exc}]"
     return "unhandled", f"[no reader for '{suffix}' — open it yourself and summarise it]"
 
 
+def _as_text(path: Path, probe: int = 8192) -> str | None:
+    """The file's contents if it is plain text, else None. A NUL byte is the
+    reliable giveaway for binary; a failed UTF-8 decode is the other."""
+    head = path.read_bytes()[:probe]
+    if b"\x00" in head:
+        return None
+    try:
+        head.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    return path.read_text(encoding="utf-8", errors="replace")
+
+
 def _pdf(path: Path) -> str:
     import pdfplumber
 
-    out = []
+    out, harvested = [], []
     with pdfplumber.open(str(path)) as pdf:
         for i, page in enumerate(pdf.pages, 1):
             text = page.extract_text() or ""
             tables = page.extract_tables() or []
+            harvested.append(text)
             out.append(f"--- page {i} ---\n{text}")
             for table in tables:
                 rows = [" | ".join((cell or "").strip() for cell in row) for row in table]
+                harvested.append("".join(rows))
                 out.append("[table]\n" + "\n".join(rows))
+
+    # Whether to OCR is a question about the TEXT, never about the assembled
+    # output: "--- page N ---" markers are scaffolding this function just
+    # added, and four of them total 62 characters. Measuring the whole string
+    # meant a scanned PDF of three or more pages cleared the threshold on
+    # markers alone, skipped OCR, and was recorded as a healthy 62-character
+    # extract. A real four-page scanned ticket reached Convert as nothing.
     body = "\n".join(out).strip()
-    if len(body) < 40:
+    if meaningful_chars("".join(harvested)) < 40:
         # A scanned confirmation is an image in a PDF wrapper — OCR it.
         body += "\n" + _ocr_pdf(path)
     return body
+
+
+PAGE_MARKER_RE = re.compile(r"^(?:--- page \d+(?: \(ocr\))? ---|\[table\])\s*$", re.M)
+
+
+def meaningful_chars(text: str) -> int:
+    """Length of what was actually read, with this module's own scaffolding
+    discounted. Used for the OCR decision and for the `status` an intake run
+    reports, so neither can be fooled by a long file that yielded nothing."""
+    return len(PAGE_MARKER_RE.sub("", text or "").strip())
 
 
 def _ocr_pdf(path: Path) -> str:

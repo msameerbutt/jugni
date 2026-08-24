@@ -323,6 +323,121 @@ function goto(route) {
     }
   }
 
+  /* A multi-leg ticket is priced once.
+
+     Melbourne to Lahore is four flights on one reference and one receipt, so
+     three of those legs carry no fare of their own. Listing them as "no price
+     recorded — your total is lower than what you actually paid" contradicts
+     the paid total on the same screen. Checked against the data rather than a
+     fixture: no leg may be flagged when a sibling on its booking reference
+     carries the fare, and a ticket with no fare anywhere must still show. */
+  {
+    const baked = JSON.parse(doc.getElementById('jugni-data')?.textContent?.trim() || '{}');
+    const legs = baked.transport || [];
+    const pricedRefs = new Set(legs.filter((t) => Number(t.cost) > 0 && t.bookingRef)
+      .map((t) => String(t.bookingRef).trim().toLowerCase()));
+
+    await goto('expenses');
+    await wait(120);
+    const panel = (doc.querySelector('[data-view]')?.textContent || '').replace(/\s+/g, ' ');
+    const listed = panel.includes('bookings with no price') ? panel : '';
+
+    const wrongly = legs.filter((t) => !(Number(t.cost) > 0) && t.bookingRef
+      && pricedRefs.has(String(t.bookingRef).trim().toLowerCase())
+      && listed.includes(`${t.from || '?'} → ${t.to || '?'}`));
+
+    if (wrongly.length) {
+      fail(`${wrongly.length} leg(s) reported as unpriced although their booking `
+           + `carries the fare: ${wrongly.map((t) => t.bookingRef).join(', ')}`);
+    } else if (pricedRefs.size) {
+      console.log('  ok    a multi-leg ticket counts as priced once, not once per leg');
+    }
+  }
+
+  /* First-run identity (spec §6).
+
+     The app has no login, so this dialog is the only moment it asks who is
+     holding the file — and it fires from a boot-time flag that is trivially
+     lost in a refactor. This same jsdom started with empty storage, so it IS
+     a first run: the dialog must be open, and must carry exactly the three
+     identity fields, no more. */
+  {
+    const dialog = [...doc.querySelectorAll('dialog.sheet')].find((d) => d.open);
+    const bakedTrip = JSON.parse(doc.getElementById('jugni-data')?.textContent?.trim() || '{}');
+    if (!bakedTrip.trip) {
+      console.log('  --    welcome dialog: no trip baked in, nothing to introduce');
+    } else if (!dialog) {
+      fail('first run did not ask who the traveller is');
+    } else {
+      const fields = [...dialog.querySelectorAll('[name]')].map((i) => i.name).sort();
+      if (String(fields) !== 'age,email,nickname') {
+        fail(`welcome asks for [${fields}] — identity is exactly nickname, email, age (spec §6)`);
+      } else {
+        console.log('  ok    first run asks for nickname, email and age');
+      }
+      /* Leave it closed, or every later query hits a modal-covered page. */
+      dialog.close();
+      await wait(60);
+    }
+  }
+
+  /* Per-task "add to calendar" (spec §12).
+
+     Only a task with a due date can become an event, so the control appears
+     per row rather than once per screen — which is exactly the shape that
+     rots quietly when someone edits TaskRow. Assert it is there, labelled
+     with its own task, and offered on every dated open task rather than just
+     the first. Clicking is left alone on purpose: the download goes through
+     an <a download> click, which jsdom reports as unimplemented navigation. */
+  {
+    await goto('checklist');
+    await wait(120);
+    const rows = [...doc.querySelectorAll('.row')].filter((r) => r.querySelector('.check'));
+    const dated = rows.filter((r) => /due |overdue/i.test(r.textContent || '')
+                                     && !r.classList.contains('row--done'));
+    const withBtn = dated.filter((r) =>
+      [...r.querySelectorAll('button')].some((b) => b.getAttribute('title') === 'Add to calendar'));
+
+    if (!dated.length) {
+      console.log('  --    per-task calendar: no dated open tasks in this build');
+    } else if (withBtn.length !== dated.length) {
+      fail(`per-task calendar: ${withBtn.length} of ${dated.length} dated tasks offer it`);
+    } else {
+      const generic = withBtn.filter((r) => {
+        const b = [...r.querySelectorAll('button')]
+          .find((x) => x.getAttribute('title') === 'Add to calendar');
+        return !/^Add ".+" to your calendar$/.test(b.getAttribute('aria-label') || '');
+      });
+      if (generic.length) {
+        fail(`${generic.length} calendar button(s) do not name their task in the label`);
+      } else {
+        console.log(`  ok    per-task calendar offered on all ${dated.length} dated open tasks`);
+      }
+
+      /* Both routes must survive. The Google link is the convenient one and
+         the .ics is the one that works with no connection and outside Google
+         — dropping the file download to "simplify" would quietly break the
+         offline promise (§8) for every Apple and Outlook user. Opening the
+         sheet is safe here; following either route is not, because both end
+         in navigation jsdom does not implement. */
+      [...withBtn[0].querySelectorAll('button')]
+        .find((b) => b.getAttribute('title') === 'Add to calendar').click();
+      await wait(120);
+      const sheet = [...doc.querySelectorAll('dialog.sheet')].find((d) => d.open);
+      const offers = sheet
+        ? [...sheet.querySelectorAll('.rows strong')].map((x) => x.textContent.trim()) : [];
+      if (!offers.some((o) => /google/i.test(o))) {
+        fail('per-task calendar no longer offers the Google Calendar route');
+      } else if (!offers.some((o) => /file|\.ics/i.test(o))) {
+        fail('per-task calendar dropped the .ics download — offline and non-Google users lose it');
+      } else {
+        console.log(`  ok    calendar offers both routes: ${offers.join(' + ')}`);
+      }
+      sheet?.close();
+      await wait(60);
+    }
+  }
+
   /* A rebuilt file must not hide behind a stale saved copy.
 
      The store prefers localStorage over the baked trip on purpose — reopening

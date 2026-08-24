@@ -25,6 +25,12 @@ ALLOWED_HOSTS = {
     "api.frankfurter.app",
     "restcountries.com",
     "www.w3.org",          # inline SVG namespace, not a fetch
+    # A link the traveller may choose to follow, never something this file
+    # loads: "add this task to Google Calendar" opens Google's own event
+    # template in a new tab. Nothing is fetched from it to render the app, so
+    # the offline promise is untouched — and the .ics download stays beside it
+    # for everyone not on Google, and for anyone with no connection.
+    "calendar.google.com",
 }
 
 ASSET_ATTR_RE = re.compile(r'(?:src|href)\s*=\s*["\'](https?:)?//([^/"\']+)', re.I)

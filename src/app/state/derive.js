@@ -162,8 +162,19 @@ export const stayIsSplit = (s, stayId) =>
 export function bookingsMissingPrice(s, cityId) {
   const out = [];
 
+  /* One ticket routinely covers several legs — Melbourne to Lahore is four
+     flights on one reference, and the receipt prices the journey, not the
+     hops. Once any leg of a booking carries the fare, its siblings are paid
+     for, and listing them as "no price recorded" states the opposite of what
+     the screen above it says. A leg with no reference at all is judged on its
+     own, which is what keeps a genuinely unpriced ticket visible. */
+  const pricedRefs = new Set(
+    s.transport.filter((t) => Number(t.cost) > 0 && t.bookingRef)
+      .map((t) => String(t.bookingRef).trim().toLowerCase()));
+
   for (const t of s.transport) {
     if (Number(t.cost) > 0) continue;
+    if (t.bookingRef && pricedRefs.has(String(t.bookingRef).trim().toLowerCase())) continue;
     out.push({
       kind: 'transport', id: t.id, ref: t.bookingRef || '',
       label: `${t.from || '?'} → ${t.to || '?'}`,
@@ -173,6 +184,12 @@ export function bookingsMissingPrice(s, cityId) {
   }
   for (const x of s.stays) {
     if (Number(x.cost) > 0) continue;
+    /* Neither a fare nor a confirmation number means this was never a booking:
+       it is a spare room at a relative's, recorded so the address is in the
+       app at midnight in an arrivals hall. Chasing it for a missing price
+       invents a debt. A stay WITH a reference and no fare is the real case
+       this panel is for — a room a companion booked and paid for. */
+    if (!x.confirmationNumber) continue;
     out.push({ kind: 'stay', id: x.id, ref: x.confirmationNumber || '', label: x.name, cityId: x.cityId });
   }
 

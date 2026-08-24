@@ -19,3 +19,5 @@ hu   # Budapest
 sk   # Bratislava
 at   # Vienna
 cz   # Prague
+pk   # Lahore
+th   # Bangkok layover

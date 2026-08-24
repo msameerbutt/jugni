@@ -59,8 +59,14 @@ export function TaskRow({ item, state, leavesView = false, showCity = true }) {
         ${item.note && html`<p class="small faint" style="margin-top:2px">${item.note}</p>`}
       </div>
 
-      <div class="row__side hide-readonly">
-        <button class="btn btn--ghost btn--icon" onClick=${() => A.editTask(item.id)}
+      <div class="row__side">
+        ${item.dueDate && !checked && html`
+          <button class="btn btn--ghost btn--icon" onClick=${() => A.taskToCalendar(item.id)}
+                  aria-label=${`Add "${item.task}" to your calendar`}
+                  title="Add to calendar">
+            <${Icon} name="calendar-days" />
+          </button>`}
+        <button class="btn btn--ghost btn--icon hide-readonly" onClick=${() => A.editTask(item.id)}
                 aria-label=${`Edit ${item.task}`}>
           <${Icon} name="pencil" />
         </button>

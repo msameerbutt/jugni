@@ -17,6 +17,31 @@ Agents start at [`AGENTS.md`](AGENTS.md).
 
 You need **Docker**. Nothing else — no Python, no installs.
 
+### The whole thing, in four commands
+
+```
+make generate TRIP=mytrip          # 1. make the folders
+                                   # 2. put your files in trips/mytrip/raw/
+make generate TRIP=mytrip          # 3. read them  → then ask Claude to build the trip
+make build    TRIP=mytrip          # 4. open trips/mytrip/jugni.html
+```
+
+Anything you change later is the same two lines: put the new file in `raw/`,
+run `make generate TRIP=mytrip` again, ask Claude to fold it in.
+
+| I want to… | Command |
+|---|---|
+| Start a trip | `make generate TRIP=mytrip` |
+| Read new files I just added | `make generate TRIP=mytrip` |
+| Use one plain-text summary instead of a folder | `make generate TRIP=mytrip FROM=my-summary.txt` |
+| Rebuild the app after a data change | `make build TRIP=mytrip` |
+| Rebuild from an export someone sent me | `make build TRIP=mytrip NAME=output-nazia` |
+| Check the trip data is sound | `make validate TRIP=mytrip` |
+| Prove the built file actually runs | `make check TRIP=mytrip` |
+| See every target | `make help` |
+
+The long version follows.
+
 **1. Make the trip.** This is always the first command. It creates the folders
 and tells you what to do next; it does not need anything to exist first.
 
@@ -83,19 +108,26 @@ state baked in, instead of going back to the original trip:
 
 ```
 trips/mytrip/input/
-  default.json     the trip itself — what `make generate` writes, and what builds by default
-  input1.json      an export you dropped back in
-  input2.json      another one
+  default.json          the trip itself — what `make generate` writes, and what builds by default
+  output-nazia.json     an export someone sent back
+  input1.json           another one
 ```
 
 ```
-make build TRIP=mytrip                  # builds input/default.json
-make build TRIP=mytrip NAME=input1      # builds input/input1.json instead
+make build TRIP=mytrip                        # builds input/default.json
+make build TRIP=mytrip NAME=output-nazia      # builds input/output-nazia.json instead
 ```
 
-`NAME=` picks the file; leave it off and you get `default.json`. Both write to
-`trips/mytrip/jugni.html`, so add `OUT=trips/mytrip/other.html` if you want to
-keep the two side by side.
+`NAME=` is the filename without `.json` — leave it off and you get
+`default.json`. Both write to `trips/mytrip/jugni.html`, so add
+`OUT=trips/mytrip/other.html` if you want to keep the two side by side.
+
+**To make an export the trip from now on,** hand it to Claude rather than
+renaming it yourself. It is not a copy job: an export carries ticked tasks,
+logged spend and deleted items, and folding new bookings into that without
+trampling any of it is the whole point of
+[`skills/02-convert.md`](skills/02-convert.md). Say *"update TRIP=mytrip from
+output-nazia.json"* and it becomes `default.json` with your edits intact.
 
 ## If you are working on Jugni itself
 

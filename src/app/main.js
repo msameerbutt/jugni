@@ -7,7 +7,7 @@ import * as D from './state/derive.js';
 import { toast } from './ui/overlay.js';
 import { snapshot as fxSnapshot } from './data/currency.js';
 import { ensureRates, getRates } from './data/rates.js';
-import { bindRates } from './actions.js';
+import { bindRates, welcome } from './actions.js';
 import { plural } from './lib/util.js';
 
 function readEmbedded(id) {
@@ -80,6 +80,11 @@ function start() {
   if (warnings.length) {
     toast(`${plural(warnings.length, 'data warning')} — see Trip data`);
   }
+
+  /* First open of this file, or the first load after Reset: ask who is
+     holding it. Never on a read-only snapshot — that copy cannot be edited,
+     so a form asking for an identity it can never save would be a dead end. */
+  if (!Store.isReadonly() && Store.takeWelcomeFlag()) welcome();
 }
 
 if (document.readyState === 'loading') addEventListener('DOMContentLoaded', start);

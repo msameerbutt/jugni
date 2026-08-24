@@ -31,6 +31,10 @@ let catalogue = { categories: [], checklistDefaults: [] };
 let warnings = [];
 let readonly = false;
 let needsFork = false;
+/* Set when this browser is meeting the trip for the first time — a freshly
+   opened file, or one that has just been reset. Jugni has no login, so this
+   is the only moment it gets to ask who is holding it (spec §6). */
+let needsWelcome = false;
 /* Set at boot when this file was built from newer trip data than the copy
    saved in this browser. Never acted on automatically — the saved copy holds
    ticked tasks and logged spend that the rebuild knows nothing about. */
@@ -59,6 +63,7 @@ export const hasBaked = () => !!bakedDoc;
 export const getWarnings = () => warnings;
 export const isReadonly = () => readonly;
 export const takeForkFlag = () => { const v = needsFork; needsFork = false; return v; };
+export const takeWelcomeFlag = () => { const v = needsWelcome; needsWelcome = false; return v; };
 
 /* ---------- Boot ---------- */
 
@@ -94,6 +99,12 @@ export function init(baked, defaults, buildId = '') {
      upgrading across this change is not warned; Trip data → "Restore the trip
      built into this file" is the way out of that, and only needed once. */
   if (origin === 'local' && buildId && !savedBuild) rememberBuild(buildId);
+
+  /* `baked` means a trip exists and this browser has no copy of it yet: a
+     first open, or the reload after Reset. Deliberately not `empty` — with no
+     trip loaded there is nothing to be the traveller of yet, and not `local`,
+     which is every ordinary reopen and must never nag. */
+  needsWelcome = origin === 'baked';
 
   const res = normalize(source);
   state = applyDefaults(res.doc, catalogue);

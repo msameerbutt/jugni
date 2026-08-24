@@ -3,12 +3,12 @@
 import { html } from './lib/html.js';
 import { Field } from './ui/components.js';
 import { Icon } from './lib/icons.js';
-import { openSheet, toast, confirmDestructive } from './ui/overlay.js';
+import { openSheet, closeSheet, toast, confirmDestructive } from './ui/overlay.js';
 import * as Store from './state/store.js';
 import * as D from './state/derive.js';
 import { snapshot as fxSnapshot } from './data/currency.js';
 import { toHome } from './data/rates.js';
-import { uid, todayISO, moneyText, titleCase, day } from './lib/util.js';
+import { uid, todayISO, moneyText, titleCase, day, addDays, fmtDate } from './lib/util.js';
 import { save, pick } from './lib/files.js';
 import { buildICS } from './lib/ics.js';
 import { buildSnapshot } from './lib/snapshot.js';
@@ -486,6 +486,82 @@ export function editTrip() {
   });
 }
 
+/* First open of a file, and the reload after Reset.
+
+   Jugni has no account and no login, so this one dialog is the whole of "who
+   is using this". It matters because the file is made to be forwarded: the
+   same trip lands in five browsers, and each copy should know whose it is.
+
+   Dismissable on purpose. Someone who just wants to look at a friend's trip
+   should not have to fill in a form to get past the front door, and the app
+   is entirely usable without it. */
+export function welcome() {
+  const state = s();
+  const me = D.primaryTraveler(state) || {};
+  const owner = me.nickname ? me.nickname.charAt(0).toUpperCase() + me.nickname.slice(1) : '';
+  const tripName = state.trip.name || 'this trip';
+
+  openSheet({
+    title: owner ? `${owner}'s ${tripName}` : `Welcome to ${tripName}`,
+    what: owner ? `Is that you?` : 'First, who are you?',
+    detail: owner
+      ? `Jugni put ${owner}'s name on this copy because they built it. If you are `
+        + 'someone they sent it to, put your own details in — your copy becomes yours, '
+        + `and ${owner} stays on the trip as a companion.`
+      : 'Jugni keeps a nickname rather than a legal name, and these three fields '
+        + 'are the only things it ever stores about a person.',
+    confirmLabel: owner ? 'Save' : 'Start',
+    render: () => html`
+      <${Field} label="Nickname" name="nickname" value=${me.nickname} autofocus
+                placeholder="what you want to be called" />
+      <div class="formgrid">
+        <${Field} label="Email" name="email" type="email" value=${me.email}
+                  hint="optional — never sent anywhere" />
+        <${Field} label="Age" name="age" type="number" min="0" value=${me.age || ''}
+                  hint="optional — tailors packing and pace advice" />
+      </div>
+      <p class="small muted">
+        Everything stays in this browser. There is no account, and nothing leaves
+        the file. You can change this any time under Trip data.
+      </p>`,
+    onSubmit(v) { applyIdentity(v); },
+  });
+}
+
+/* Shared by the welcome dialog and "About you".
+
+   A blank field means "leave it alone", never "erase it" — the dialog opens
+   pre-filled, so treating an untouched box as a deletion would quietly wipe
+   details on any dismissal that submits.
+
+   A genuinely different nickname means this is a fork (spec §12): the person
+   who built the trip is demoted to companion rather than overwritten, or the
+   trip would lose the one traveller who knows how it was put together. */
+function applyIdentity(v) {
+  const nickname = (v.nickname || '').trim();
+  const email = (v.email || '').trim();
+  const age = v.age === '' || v.age === undefined ? null : parseInt(v.age, 10);
+
+  Store.mutate((d) => {
+    let me = d.travelers.find((t) => t.role === 'primary');
+    const isSomeoneElse = me?.nickname && nickname
+      && me.nickname.trim().toLowerCase() !== nickname.toLowerCase();
+
+    if (me && isSomeoneElse) {
+      me.role = 'companion';
+      me = null;
+    }
+    if (!me) {
+      me = { id: uid('trav'), role: 'primary', personaProfiles: [], nickname: '', email: '', age: 0 };
+      d.travelers.unshift(me);
+    }
+
+    if (nickname) me.nickname = nickname;
+    if (email) me.email = email;
+    if (age !== null && !Number.isNaN(age)) me.age = age;
+  });
+}
+
 export function editMe() {
   const me = D.primaryTraveler(s()) || {};
   openSheet({
@@ -501,13 +577,7 @@ export function editMe() {
         Jugni stores a nickname rather than a legal name on purpose, and keeps
         identity to these three fields.
       </p>`,
-    onSubmit(v) {
-      Store.mutate((d) => {
-        let me2 = d.travelers.find((t) => t.role === 'primary');
-        if (!me2) { me2 = { id: uid('trav'), role: 'primary', personaProfiles: [] }; d.travelers.push(me2); }
-        Object.assign(me2, { nickname: v.nickname, email: v.email, age: parseInt(v.age, 10) || 0 });
-      });
-    },
+    onSubmit(v) { applyIdentity(v); },
   });
 }
 
@@ -566,6 +636,94 @@ export function exportICS() {
   const name = `jugni-${(s().trip.name || 'trip').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.ics`;
   save(buildICS(items, s().trip.name), name, 'text/calendar');
   toast(`${items.length} items exported — open the file to add them`);
+}
+
+/* One task, straight into the phone's calendar (spec §12).
+
+   The whole-trip export is the right tool the week before departure and the
+   wrong one for "remind me about this specific thing" — it hands over forty
+   events when the traveller wanted one. `buildICS` already takes any list, so
+   a single item costs nothing extra.
+
+   Not `hide-readonly`: someone reading a shared snapshot has every reason to
+   put a cancellation deadline in their own calendar, and doing so changes
+   nothing about the trip. */
+export function taskToCalendar(id) {
+  const task = s().checklist.find((c) => c.id === id);
+  if (!task) return;
+  if (!task.dueDate) { toast('That task has no due date to put in a calendar'); return; }
+
+  openSheet({
+    title: 'Add to your calendar',
+    what: task.task,
+    detail: `Due ${fmtDate(task.dueDate)}`,
+    confirmLabel: 'Done',
+    render: () => html`
+      <div class="rows">
+        <div class="row">
+          <${Icon} name="external-link" />
+          <div class="row__body">
+            <strong>Google Calendar</strong>
+            <p class="small muted">Opens Google with the event already filled in — you just
+            press save. Needs a connection, and the task title goes to Google.</p>
+          </div>
+          <button type="button" class="btn btn--primary"
+                  onClick=${() => { closeSheet(); openInGoogleCalendar(task); }}>Open</button>
+        </div>
+        <div class="row">
+          <${Icon} name="download" />
+          <div class="row__body">
+            <strong>Calendar file</strong>
+            <p class="small muted">An <span class="tkt">.ics</span> any calendar understands —
+            Apple, Outlook, Google. Works with no connection at all.</p>
+          </div>
+          <button type="button" class="btn"
+                  onClick=${() => { closeSheet(); saveTaskICS(task); }}>Download</button>
+        </div>
+      </div>`,
+  });
+}
+
+/* Google's own "create event" template. A link out, not a fetch: nothing is
+   loaded from Google to render this app, so the file stays self-contained and
+   still opens from file:// with the network off (spec §8). What it does cost
+   is a connection at the moment you tap it, and the task title travelling to
+   Google — which is why it is offered beside the .ics rather than replacing
+   it. Apple and Outlook users, and anyone on hostel wifi, still need that. */
+function openInGoogleCalendar(task) {
+  const start = day(task.dueDate).replace(/-/g, '');
+  /* All-day events take DATE values with an EXCLUSIVE end, so a one-day task
+     ends the following morning. Passing the same date twice renders a blank
+     event in Google. */
+  const end = addDays(day(task.dueDate), 1).replace(/-/g, '');
+
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: task.task || 'Trip task',
+    dates: `${start}/${end}`,
+    details: [s().trip.name && `From ${s().trip.name}`, task.note]
+      .filter(Boolean).join('\n\n'),
+  });
+  const url = `https://calendar.google.com/calendar/render?${params}`;
+
+  const win = globalThis.open?.(url, '_blank', 'noopener,noreferrer');
+  if (!win) toast('Your browser blocked the popup — allow it, or download the file instead');
+}
+
+async function saveTaskICS(task) {
+  const item = {
+    kind: 'checklist', id: task.id, title: task.task,
+    date: task.dueDate, allDay: true,
+  };
+  const text = buildICS([item], s().trip.name);
+  const name = `jugni-${(task.task || 'task').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'task'}.ics`;
+
+  /* The share sheet is what actually shows "Add to Calendar" on a phone.
+     Downloading is the desktop fallback. */
+  if (await shareFile(text, name, 'text/calendar')) return;
+  save(text, name, 'text/calendar');
+  toast('Calendar file saved — open it to add the reminder');
 }
 
 export function downloadSnapshot() {

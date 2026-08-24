@@ -26,7 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.lib import paths
-from scripts.lib.extract import extract
+from scripts.lib.extract import extract, meaningful_chars
 from scripts.lib.merge import merge
 
 SKIP = {".gitkeep", ".DS_Store", "Thumbs.db"}
@@ -109,7 +109,7 @@ def run_intake(source: Path, out_dir: Path) -> dict:
 
         kind, text = extract(path)
         (text_dir / safe).write_text(text, encoding="utf-8")
-        chars = len(text.strip())
+        chars = meaningful_chars(text)
         status = "ok" if chars > 40 else ("empty" if kind != "error" else "error")
         known[rel] = {
             "file": rel, "kind": kind, "characters": chars,
