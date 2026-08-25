@@ -204,6 +204,14 @@ hop. Put the booking total on the first leg with a `notes` line saying what it
 covers, and leave the siblings unset — the app reads the shared `bookingRef`
 and stops asking about the rest. Do not spread an invented per-leg share.
 
+**Every leg of a booking stays visible.** The app groups transport and stays
+by their reference — four flights on one `bookingRef` read as one booking with
+four legs, and each leg shows its own state: a fare, "no extra cost", or a
+prompt to fill it in. So give every leg of a multi-leg ticket the **same**
+`bookingRef`. That reference is the only thing tying them together; without it
+they scatter into four unrelated bookings, and the traveller loses the one
+reading that makes a return ticket make sense.
+
 **`cost: 0` and no `cost` are different answers.** Absent means nobody has
 recorded a fare yet, and the app keeps asking. Zero means someone looked and
 the answer was nothing — a leg on a ticket already paid for elsewhere, a room a

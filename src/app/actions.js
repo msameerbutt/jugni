@@ -320,29 +320,38 @@ export function addPriceFor(kind, id) {
   if (!rec) return;
 
   const label = kind === 'stay' ? rec.name : `${rec.from || '?'} → ${rec.to || '?'}`;
+  /* A fare that has been recorded can be wrong: a typo, an estimate entered
+     before the card was billed, or a zero written when the real number was
+     not to hand. This sheet is the only place a booking's price is set, so it
+     has to be the place it is corrected too. */
+  const known = D.isPriced(rec);
+  const ref = rec.bookingRef || rec.confirmationNumber;
 
   openSheet({
-    title: 'Add the price',
+    title: known ? 'Edit the price' : 'Add the price',
     confirmLabel: 'Save price',
     render: () => html`
       <p class="small muted">
-        <strong>${label}</strong> is confirmed${rec.bookingRef || rec.confirmationNumber
-          ? ` (ref ${rec.bookingRef || rec.confirmationNumber})` : ''},
-        but no fare was recorded — so it is missing from your spend.
+        <strong>${label}</strong>${ref ? ` (ref ${ref})` : ''}
+        ${known
+          ? ' — change what this booking cost, or set it to 0 if the fare sits on another leg.'
+          : ' is confirmed, but no fare was recorded — so it is missing from your spend.'}
       </p>
       <div class="amountpad">
         <${Field} label="Amount" name="cost" type="number" step="0.01" min="0"
                   inputmode="decimal" placeholder="0.00" autofocus big
+                  value=${known ? rec.cost : ''}
                   hint=${rec.bookingRef
                     ? `0 is fine if another leg of ${rec.bookingRef} carries the fare`
                     : '0 is fine if this one cost nothing'} />
         <${Field} label="Currency" name="currency" type="select"
                   value=${rec.currency || state.trip.homeCurrency} options=${currencyOptions()} />
       </div>
-      <${Field} label="Was this the whole party's booking?" name="group" type="select" value="no"
-                options=${[{ value: 'no', label: 'No — this is my cost' },
-                           { value: 'yes', label: `Yes — split between ${
-                             kind === 'stay' ? D.partySize(state, rec) : D.headcount(state)}` }]} />`,
+      ${!known && html`
+        <${Field} label="Was this the whole party's booking?" name="group" type="select" value="no"
+                  options=${[{ value: 'no', label: 'No — this is my cost' },
+                             { value: 'yes', label: `Yes — split between ${
+                               kind === 'stay' ? D.partySize(state, rec) : D.headcount(state)}` }]} />`}`,
     onSubmit(v) {
       /* Zero is a legitimate answer, not an empty box. Four flights on one
          ticket have one fare: the total goes on one leg and the others are
@@ -359,6 +368,10 @@ export function addPriceFor(kind, id) {
       });
 
       if (cost === 0) { toast('Recorded as no extra cost'); return; }
+      /* Correcting a figure updates the booking and stops there. Creating a
+         personal expense is a separate claim about who paid, and it has
+         already been made — or deliberately not — the first time round. */
+      if (known) { toast('Price updated'); return; }
       if (kind === 'stay' && v.group === 'yes') { splitStay(id); return; }
 
       /* A leg or a solo booking becomes your expense directly. */
@@ -534,7 +547,7 @@ export function welcome() {
         Everything stays in this browser. There is no account, and nothing leaves
         the file. You can change this any time under Trip data.
       </p>`,
-    onSubmit(v) { applyIdentity(v); },
+    onSubmit(v) { applyIdentity(v, { fork: true }); },
   });
 }
 
@@ -547,14 +560,23 @@ export function welcome() {
    A genuinely different nickname means this is a fork (spec §12): the person
    who built the trip is demoted to companion rather than overwritten, or the
    trip would lose the one traveller who knows how it was put together. */
-function applyIdentity(v) {
+function applyIdentity(v, { fork = false } = {}) {
   const nickname = (v.nickname || '').trim();
   const email = (v.email || '').trim();
   const age = v.age === '' || v.age === undefined ? null : parseInt(v.age, 10);
 
   Store.mutate((d) => {
     let me = d.travelers.find((t) => t.role === 'primary');
-    const isSomeoneElse = me?.nickname && nickname
+
+    /* Handing the file to someone else is a fork: the person who built the
+       trip becomes a companion rather than being overwritten (spec §12).
+
+       This must only happen when the app has actually asked "who are you?" —
+       on a first open or an import. Running it from "About you" turned a
+       traveller correcting the spelling of their own name into two people:
+       the old spelling demoted to companion, the new one added as primary.
+       Editing yourself edits yourself. */
+    const isSomeoneElse = fork && me?.nickname && nickname
       && me.nickname.trim().toLowerCase() !== nickname.toLowerCase();
 
     if (me && isSomeoneElse) {
@@ -572,23 +594,95 @@ function applyIdentity(v) {
   });
 }
 
-export function editMe() {
-  const me = D.primaryTraveler(s()) || {};
+/* Edit anyone on the trip.
+
+   Companions were read-only, which meant a name taken from a booking
+   platform — often a legal name, sometimes misspelled by the platform —
+   could never be corrected. They are people on the trip, not a derived list.
+
+   Deleting is offered for companions only: removing the primary would leave
+   the file with no owner and no way back. */
+export function editTraveler(id) {
+  const t = s().travelers.find((x) => x.id === id);
+  if (!t) return;
+  const isPrimary = t.role === 'primary';
+
   openSheet({
-    title: 'About you',
+    title: isPrimary ? 'About you' : `About ${t.nickname || 'this traveller'}`,
+    detail: isPrimary
+      ? 'Jugni keeps a nickname rather than a legal name, and these three fields are the only things it stores about a person.'
+      : 'A companion on this trip. Their own itinerary lives in their own copy — this is just what to call them here.',
     render: () => html`
-      <${Field} label="Nickname" name="nickname" value=${me.nickname} autofocus
-                placeholder="what you want to be called" />
-      <div class="formgrid">
-        <${Field} label="Email" name="email" type="email" value=${me.email} />
-        <${Field} label="Age" name="age" type="number" min="0" value=${me.age || ''} />
-      </div>
-      <p class="small muted">
-        Jugni stores a nickname rather than a legal name on purpose, and keeps
-        identity to these three fields.
-      </p>`,
-    onSubmit(v) { applyIdentity(v); },
+      <${Field} label="Nickname" name="nickname" value=${t.nickname} autofocus
+                placeholder="what they want to be called" />
+      <${Field} label="Email" name="email" type="email" value=${t.email}
+                hint="optional — stays in this file" />
+      <${Field} label="Age" name="age" type="number" min="0" value=${t.age || ''}
+                hint="optional" />`,
+    secondary: isPrimary ? undefined
+      : { label: 'Remove', icon: 'trash-2', onClick: () => removeTraveler(id) },
+    onSubmit(v) {
+      const nickname = (v.nickname || '').trim();
+      const email = (v.email || '').trim();
+      const age = v.age === '' || v.age === undefined ? null : parseInt(v.age, 10);
+      Store.mutate((d) => {
+        const rec = d.travelers.find((x) => x.id === id);
+        if (!rec) return;
+        /* A blank field leaves the value alone rather than erasing it — the
+           form opens pre-filled, so an untouched box is not a deletion. */
+        if (nickname) rec.nickname = nickname;
+        if (email) rec.email = email;
+        if (age !== null && !Number.isNaN(age)) rec.age = age;
+      });
+    },
   });
+}
+
+export function removeTraveler(id) {
+  const t = s().travelers.find((x) => x.id === id);
+  if (!t || t.role === 'primary') return;
+  confirmDestructive({
+    title: 'Remove this traveller?',
+    what: t.nickname || 'This companion',
+    detail: 'They are removed from this trip only. Anything booked in their name keeps '
+      + 'their name on it — this does not touch bookings.',
+    onConfirm() {
+      const undo = Store.mutateUndoable((d) => {
+        d.travelers = d.travelers.filter((x) => x.id !== id);
+      });
+      if (undo) toast(`${t.nickname || 'Traveller'} removed`, { label: 'Undo', onClick: undo });
+    },
+  });
+}
+
+export function addTraveler() {
+  openSheet({
+    title: 'Add a traveller',
+    confirmLabel: 'Add',
+    detail: 'Someone else on this trip. The itinerary stays yours — a companion gets '
+      + 'their own editable copy by importing your exported file.',
+    render: () => html`
+      <${Field} label="Nickname" name="nickname" autofocus placeholder="what to call them" />
+      <${Field} label="Email" name="email" type="email" hint="optional" />
+      <${Field} label="Age" name="age" type="number" min="0" hint="optional" />`,
+    onSubmit(v) {
+      const nickname = (v.nickname || '').trim();
+      if (!nickname) { toast('Give them a name'); return; }
+      Store.mutate((d) => d.travelers.push({
+        id: uid('trav'), role: 'companion', personaProfiles: [],
+        nickname, email: (v.email || '').trim(),
+        age: parseInt(v.age, 10) || 0,
+      }));
+      toast(`${nickname} added`);
+    },
+  });
+}
+
+export function editMe() {
+  const me = D.primaryTraveler(s());
+  if (me) { editTraveler(me.id); return; }
+  /* No primary yet — that is the welcome dialog's job, not an edit. */
+  welcome();
 }
 
 /* --------------------------------------------------------------- share (F5) */

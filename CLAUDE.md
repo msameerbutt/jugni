@@ -102,6 +102,35 @@ organised.
 
 ---
 
+## Every output, every time
+
+Jugni builds more than one artifact from the same source, and **a change is not
+finished until all of them carry it.** Rebuilding one and not the others leaves
+a working app that is quietly a version behind — the hardest kind of wrong to
+notice, because nothing looks broken.
+
+| Artifact | Rebuild with | Enforced by |
+|---|---|---|
+| `trips/<slug>/jugni.html` | `make build TRIP=<slug>` | — |
+| `trips/<slug>/hosted/` | refreshed automatically by `make build` | `make check` fails if it is older than the file beside it |
+| `trips/sample/` (committed) | `make sample` | — |
+| The empty shell | `make blank` | — |
+
+Two of those are automatic now, because both were forgotten in practice: a
+hosted bundle went three features stale, and it took someone opening it to
+notice. **Prefer making a step impossible to skip over remembering to do it** —
+if you find yourself writing "remember to…" into an instruction, ask first
+whether the build or `make check` can simply do it or refuse.
+
+After any change to `src/`, the schema, or a trip's content:
+
+```
+make sample          # rebuilds, validates, builds and checks the committed example
+make build TRIP=x    # each live trip — this also refreshes its hosted/ bundle
+```
+
+---
+
 ## The sample trip ships with the repo
 
 `trips/sample` is the **only** trip committed to git, and the only one anyone

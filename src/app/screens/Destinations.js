@@ -320,6 +320,10 @@ function StayCard({ stay, state }) {
       ${stay.notes && html`<p class="small muted wrap-anywhere" style="margin-top:var(--space-3)">${stay.notes}</p>`}
 
       <div class="notecard__foot hide-readonly">
+        ${D.isPriced(stay) && html`
+          <button class="btn btn--ghost" onClick=${() => A.addPriceFor('stay', stay.id)}>
+            <${Icon} name="pencil" /> Edit the price
+          </button>`}
         ${stay.cost > 0
           ? (alreadySplit
             ? html`<span class="badge badge--done"><${Icon} name="circle-check" /> your share is logged</span>`

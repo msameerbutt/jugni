@@ -146,6 +146,19 @@ def main() -> int:
                     print(f"  ok    installable: manifest, service worker and "
                           f"{len(man['icons'])} icon entries all resolve")
 
+    # --- 3c. a hosted bundle beside this file must not be older than it ---
+    # The build refreshes hosted/ automatically, so this only fires when
+    # something bypassed it. Worth catching: a stale bundle is a working app
+    # from a previous version, which is the hardest kind of wrong to notice.
+    sibling = path.parent / "hosted" / "index.html"
+    if path.name != "index.html" and sibling.exists():
+        if sibling.stat().st_mtime < path.stat().st_mtime:
+            failures.append(
+                f"{sibling.relative_to(paths.ROOT)} is older than this build — "
+                f"the hosted copy is a previous version of the app. Run `make host TRIP=...`")
+        else:
+            print("  ok    hosted bundle beside it is current")
+
     # --- 4. does it actually run? ---
     smoke = subprocess.run(
         ["node", str(paths.ROOT / "scripts" / "smoke.js"), str(path)],

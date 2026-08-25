@@ -260,23 +260,40 @@ def main() -> int:
     # the PWA slot is still open. Doing it the other way round replaced the
     # slot with "" and then had nothing left to inject — the bundle shipped
     # with no manifest link and looked fine until you tried to install it.
+    # Opting in to hosting is explicit (`make host`), but staying in sync is
+    # not optional: once a trip has a hosted/ bundle, every later `make build`
+    # refreshes it. Leaving that to whoever remembers is how it went three
+    # features stale — the file looked fine, it was just an older app.
+    host_dir = None
     if args.host_dir:
         host_dir = Path(args.host_dir)
         if not host_dir.is_absolute():
             host_dir = paths.ROOT / host_dir
+    elif (out_path.parent / "hosted" / "index.html").exists():
+        host_dir = out_path.parent / "hosted"
+
+    # Cut the hosted copy while the PWA slot is still open, but write it
+    # *after* the portable file so its mtime is never behind — a staleness
+    # check that has to allow a fudge factor is a staleness check that will
+    # eventually miss something.
+    hosted = None
+    if host_dir:
         theme = (trip or {}).get("trip", {}).get("theme", "light")
         hosted = html.replace("{{PWA_HEAD}}", pwa.head_tags(name, theme))
         hosted = (hosted.replace("</body>", pwa.REGISTER + "\n</body>")
                   if "</body>" in hosted else hosted + pwa.REGISTER)
-        written = pwa.write(host_dir, hosted, name, theme, build_id)
-        rel_host = (host_dir.relative_to(paths.ROOT)
-                    if host_dir.is_relative_to(paths.ROOT) else host_dir)
-        print(f"  hosted:{rel_host}/ — {', '.join(written)}")
 
     # The portable file carries no manifest link: it would point at a sibling
     # that is not there, in the one artifact whose promise is self-containment.
     html = html.replace("{{PWA_HEAD}}", "")
     out_path.write_text(html, encoding="utf-8")
+
+    if hosted is not None:
+        theme = (trip or {}).get("trip", {}).get("theme", "light")
+        written = pwa.write(host_dir, hosted, name, theme, build_id)
+        rel_host = (host_dir.relative_to(paths.ROOT)
+                    if host_dir.is_relative_to(paths.ROOT) else host_dir)
+        print(f"  hosted:{rel_host}/ — {', '.join(written)}")
 
     kb = len(html.encode("utf-8")) / 1024
     print(f"  data: {'baked in (' + name + ')' if trip else 'empty shell — import in-browser'}")

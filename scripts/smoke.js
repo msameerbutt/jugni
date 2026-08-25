@@ -376,6 +376,67 @@ function goto(route) {
     }
   }
 
+  /* A figure that can be entered can be corrected.
+
+     Every price in this app is typed by a person, from a card statement or a
+     memory, sometimes as a placeholder. "Add the price" appeared only while
+     the field was blank, so the first value entered was the last — a typo or
+     an estimate was permanent. Anything showing a price offers a way in. */
+  {
+    await goto('expenses');
+    await wait(160);
+    const rows = [...doc.querySelectorAll('.section .row')]
+      .filter((r) => r.querySelector('.row__title'));
+    const mute = rows.filter((r) => !r.querySelector('button')
+      && !/By category|Transport|Food|Stay|Activity|Shopping|Fees|Other/.test(
+        r.querySelector('.row__title')?.textContent || ''));
+
+    if (!rows.length) {
+      console.log('  --    editable prices: nothing costed in this trip');
+    } else if (mute.length) {
+      fail(`${mute.length} costed row(s) on Expenses offer no way to change the figure: `
+           + mute.slice(0, 3).map((r) => r.querySelector('.row__title').textContent.trim()).join('; '));
+    } else {
+      console.log(`  ok    all ${rows.length} rows on Expenses can be edited`);
+    }
+  }
+
+  /* Every booked leg is listed, whatever its price.
+
+     A four-flight ticket has one fare. An earlier fix stopped the three
+     unpriced legs being reported as "missing from your spend" — correctly —
+     but did it by hiding them, which left nowhere to record that they cost
+     nothing on their own. Pricing is a state to show, never a reason to
+     disappear. */
+  {
+    const baked = JSON.parse(doc.getElementById('jugni-data')?.textContent?.trim() || '{}');
+    const legs = baked.transport || [];
+    if (!legs.length) {
+      console.log('  --    bookings: no transport in this trip');
+    } else {
+      await goto('expenses');
+      await wait(160);
+      const view = (doc.querySelector('[data-view]')?.textContent || '').replace(/\s+/g, ' ');
+      const absent = legs.filter((t) => !view.includes(`${t.from || '?'} → ${t.to || '?'}`));
+      if (absent.length) {
+        fail(`${absent.length} booked leg(s) do not appear on Expenses: `
+             + absent.map((t) => t.bookingRef || t.id).join(', '));
+      } else {
+        /* And a multi-leg reference must read as one booking, not as N. */
+        const refs = {};
+        for (const t of legs) if (t.bookingRef) refs[t.bookingRef] = (refs[t.bookingRef] || 0) + 1;
+        const multi = Object.entries(refs).filter(([, n]) => n > 1);
+        const grouped = multi.every(([ref, n]) => view.includes(`ref ${ref}`) && view.includes(`${n} legs`));
+        if (multi.length && !grouped) {
+          fail(`a multi-leg booking is not grouped under its reference: ${multi.map(([r]) => r).join(', ')}`);
+        } else {
+          console.log(`  ok    all ${legs.length} booked legs listed`
+                      + (multi.length ? `, ${multi.length} grouped by reference` : ''));
+        }
+      }
+    }
+  }
+
   /* Zero is an answer. A leg recorded as costing nothing — because the fare
      sits on another leg of the same ticket — must not be listed as having no
      price. Treating 0 as an empty box made that leg ask forever. */
@@ -485,6 +546,50 @@ function goto(route) {
       /* Leave it closed, or every later query hits a modal-covered page. */
       dialog.close();
       await wait(60);
+    }
+  }
+
+  /* Editing yourself edits yourself.
+
+     Handing the file to someone else is a fork — the previous owner becomes a
+     companion. Running that same rule from "About you" turned a traveller
+     fixing the spelling of their own name into two people: the old spelling
+     demoted to companion, the new one added as primary. Two different
+     questions, and only one of them creates anybody. */
+  {
+    await goto('data');
+    await wait(160);
+    const before = JSON.parse(window.localStorage.getItem(tripStorageKey()) || '{}').travelers || [];
+    const row = [...doc.querySelectorAll('.row')].find((r) => /primary/.test(r.textContent || ''));
+
+    if (!before.length || !row) {
+      console.log('  --    traveller editing: nobody on this trip to edit');
+    } else {
+      row.querySelector('button')?.click();
+      await wait(140);
+      const sheet = [...doc.querySelectorAll('dialog.sheet')].find((d) => d.open);
+      const field = sheet?.querySelector('[name=nickname]');
+      if (!field) {
+        fail('editing the primary traveller does not offer a nickname field');
+      } else {
+        field.value = 'RenamedForTest';
+        sheet.querySelector('form').dispatchEvent(
+          new window.Event('submit', { bubbles: true, cancelable: true }));
+        await wait(220);
+        const after = JSON.parse(window.localStorage.getItem(tripStorageKey()) || '{}').travelers || [];
+        const primaries = after.filter((t) => t.role === 'primary');
+
+        if (after.length !== before.length) {
+          fail(`renaming the primary changed the traveller count ${before.length} → ${after.length}`
+               + ' — a rename must not create anybody');
+        } else if (primaries.length !== 1) {
+          fail(`after a rename there are ${primaries.length} primary travellers`);
+        } else if (primaries[0].nickname !== 'RenamedForTest') {
+          fail(`the rename did not take: primary is ${JSON.stringify(primaries[0].nickname)}`);
+        } else {
+          console.log('  ok    renaming a traveller renames them, and creates nobody');
+        }
+      }
     }
   }
 

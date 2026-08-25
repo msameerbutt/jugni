@@ -38,6 +38,21 @@ is. Everything below is what the harness cannot judge.
 - [ ] **No text wraps badly.** Card titles are short enough not to orphan a
       word; booking refs, addresses and URLs do not widen their container.
       Check at a narrow viewport, not just a wide one.
+- [ ] **Anything a person typed, a person can retype.** Prices, names, dates,
+      notes — if the app accepted a value once it must accept a correction,
+      and the control cannot appear only while the field is empty. A figure
+      entered as an estimate or a placeholder is the normal case, not the
+      exception.
+- [ ] **Editing a thing edits that thing.** Rename a traveller, a task, a
+      booking — the count before and after must match. A rule that belongs to
+      one flow (a fork replaces the owner) applied to another (correcting your
+      own spelling) turns one person into two, and the app looks right the
+      whole time. Share the form; do not share the consequence.
+- [ ] **Nothing disappears because it has been answered.** A booking with a
+      price, a leg costing nothing, a task ticked off — these are states to
+      show, not reasons to remove the row. Twice now a "stop nagging about
+      this" fix has been built as "hide it", which also removes the only place
+      the traveller could correct it. Quiet it down; do not delete it.
 - [ ] **Every column that can be zero still renders.** A figure that disappears
       when it is zero reads as a bug and hides what was never counted.
 - [ ] **Two destination pages have the same sections.** Open the shortest stop

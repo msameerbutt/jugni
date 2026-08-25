@@ -189,6 +189,58 @@ export const coveredByBooking = (s, rec) => {
     && String(t.bookingRef || '').trim().toLowerCase() === ref);
 };
 
+/* Every booked thing, grouped by the reference it was booked under.
+
+   One ticket covering four flights is one purchase and four legs, and the
+   traveller needs both readings: what the booking cost, and which legs it
+   covers. Hiding the three unpriced legs once the fourth carries the fare —
+   which is what "covered by a sibling" used to do — answered the first
+   question by removing the second, so there was no longer anywhere to record
+   that a leg cost nothing on its own. Show them all; label them honestly. */
+export function bookingGroups(s) {
+  const rows = [
+    ...s.transport.map((t) => ({
+      kind: 'transport', id: t.id, ref: (t.bookingRef || '').trim(),
+      label: `${t.from || '?'} → ${t.to || '?'}`,
+      date: day(t.departDateTime), cost: t.cost, currency: t.currency,
+      homeAmount: t.homeAmount, priced: isPriced(t),
+    })),
+    ...s.stays.map((x) => ({
+      kind: 'stay', id: x.id, ref: (x.confirmationNumber || '').trim(),
+      label: x.name, date: day(x.checkIn), cost: x.cost, currency: x.currency,
+      homeAmount: x.homeAmount, priced: isPriced(x),
+    })),
+  ];
+
+  const groups = [];
+  const byRef = new Map();
+  for (const r of rows) {
+    /* No reference means it stands alone — two unrelated bookings must never
+       be merged just because neither carries a number. */
+    const key = r.ref ? `${r.kind}:${r.ref.toLowerCase()}` : `solo:${r.id}`;
+    if (!byRef.has(key)) {
+      const g = { ref: r.ref, kind: r.kind, items: [], total: 0, currency: '', paid: false };
+      byRef.set(key, g);
+      groups.push(g);
+    }
+    const g = byRef.get(key);
+    g.items.push(r);
+    if (Number(r.cost) > 0) {
+      g.total += Number(r.cost);
+      g.currency = g.currency || r.currency || '';
+      g.paid = true;
+    }
+  }
+  for (const g of groups) {
+    g.items = sortBy(g.items, (r) => r.date || '');
+    /* Answered means every leg has been given a figure, zero included. A
+       group where one leg carries the fare and the rest are still blank is
+       priced but not finished — the traveller has more to say about it. */
+    g.answered = g.items.every((r) => r.priced);
+  }
+  return sortBy(groups, (g) => g.items[0]?.date || '');
+}
+
 export function bookingsMissingPrice(s, cityId) {
   const out = [];
 
@@ -200,6 +252,8 @@ export function bookingsMissingPrice(s, cityId) {
      own, which is what keeps a genuinely unpriced ticket visible. */
   for (const t of s.transport) {
     if (isPriced(t)) continue;
+    /* Its sibling carries the fare, so nothing is missing from the total.
+       It still appears under Bookings, where it can be answered. */
     if (coveredByBooking(s, t)) continue;
     out.push({
       kind: 'transport', id: t.id, ref: t.bookingRef || '',

@@ -75,19 +75,29 @@ export function Data({ state }) {
               </div>
             </div>
             <div class="row__side hide-readonly">
-              <button class="btn btn--ghost" onClick=${A.editMe}>Edit</button>
+              <button class="btn btn--ghost" onClick=${A.editMe}
+                      aria-label=${`Edit ${me.nickname || 'your details'}`}>Edit</button>
             </div>
           </div>`}
         ${companions.map((c) => html`
           <div class="row" key=${c.id}>
             <div class="row__body">
               <div class="row__title">${c.nickname || 'Companion'}</div>
-              <div class="row__meta small muted">
-                companion — their own itinerary lives in their own Jugni
+              <div class="row__meta small muted wrap-anywhere">
+                ${c.email || 'no email'}${c.age ? ` · ${c.age}` : ''} · companion
               </div>
+            </div>
+            <div class="row__side hide-readonly">
+              <button class="btn btn--ghost" onClick=${() => A.editTraveler(c.id)}
+                      aria-label=${`Edit ${c.nickname || 'this companion'}`}>Edit</button>
             </div>
           </div>`)}
       </div></div>
+      <div class="hide-readonly" style="margin-top:var(--space-2)">
+        <button class="btn btn--ghost" onClick=${A.addTraveler}>
+          <${Icon} name="plus" /> Add a traveller
+        </button>
+      </div>
       <p class="small muted" style="margin-top:var(--space-2)">
         This trip shows the primary traveller's itinerary. A companion gets their own
         editable copy by importing your exported file.

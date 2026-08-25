@@ -64,6 +64,19 @@ dark-theme trip gets a dark manifest.
 
 ---
 
+## Staying in sync
+
+Once a trip has a `hosted/` folder, **every `make build` refreshes it**. You opt
+in once with `make host`; after that it cannot drift behind the single file.
+
+`make check` enforces it from the other side: if `hosted/index.html` is older
+than the `jugni.html` beside it, the check fails and names the command to fix
+it. This only fires if something bypassed the build — but a stale bundle is a
+working app from a previous version, and that is the hardest kind of wrong to
+notice by looking at it.
+
+---
+
 ## Deploying
 
 Any static host works. The one that is genuinely free *and* can put a Google

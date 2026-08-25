@@ -116,6 +116,12 @@ success; a failed call shows cached data with a "last updated" stamp, and a
 first run with no network shows an explicit "not yet available" state, never a
 blank.
 
+**Every output carries every change.** `make build` refreshes a trip's
+`hosted/` bundle automatically once one exists, and `make check` fails if a
+hosted copy is older than the file beside it — a stale bundle is a working app
+from a previous version, which nobody spots by looking. The committed sample is
+the one that still needs a command: `make sample`.
+
 **The single file stays self-contained (§8).** `make host` adds a *second*
 output for hosting — manifest, service worker, icons — and the PWA tags live
 only in that copy. Never put a `<link rel="manifest">` or a service-worker
