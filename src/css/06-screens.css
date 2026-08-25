@@ -44,12 +44,18 @@
 
 /* ---------- Expenses (F15) ---------- */
 
-.budget {
-  display: grid; gap: var(--space-5);
-  grid-template-columns: minmax(0,1.15fr) minmax(0,1fr);
-  align-items: center;
-}
-@media (max-width: 720px) { .budget { grid-template-columns: 1fr; } }
+/* Statbar on top, progress meter below — stacked, never side by side.
+
+   This used to sit statbar and meter in a 2-column grid. That worked with
+   two stats; a third ("Budget") was added later and the grid track sizing
+   (`minmax(0, 1.15fr)`) let the track shrink narrower than the hero-sized
+   figures actually needed. Grid does not clip overflowing inline content by
+   default, so the numbers bled sideways out of their column and the meter —
+   centered in the same tall row by `align-items: center` — rendered right
+   through them. Stacking removes the horizontal competition for width
+   entirely, which is the fix that holds regardless of how many stats or how
+   large the numbers get. */
+.budget { display: flex; flex-direction: column; gap: var(--space-5); }
 .budget__meter { display: flex; flex-direction: column; gap: var(--space-2); }
 .budget__legend { display: flex; justify-content: space-between; font-size: var(--step--1); color: var(--ink-soft); }
 .budget__over {

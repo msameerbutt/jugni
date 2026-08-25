@@ -19,11 +19,11 @@ direction. Never hand-edit an existing `input.json` to force a change through.
 
 ## The schema
 
-See `docs/jugni-spec.md` §4 for the authoritative shape (currently **1.5**).
+See `docs/jugni-spec.md` §4 for the authoritative shape (currently **1.7**).
 `make validate` checks it mechanically — run it, and read the warnings, which
 are usually real.
 
-### What 1.5 asks of you
+### What 1.7 asks of you
 
 - **`cities[].countryCode`** — ISO 3166-1 alpha-2, lowercase. Set it. The flag
   lookup falls back to matching the country *name*, and booking platforms spell
@@ -50,6 +50,40 @@ are usually real.
   filling it in is most of the value of a destination page.
 - **`extras[].startDate` / `endDate`** — only for `kind: "event"`, and only
   when the date is a **fact**. See "Events are dated only when you know" below.
+- **One trip, one currency.** `trip.homeCurrency` is the only currency the app
+  displays. Write `expenses[].amount` in it, always. A charge handed over in
+  another currency goes in `expenses[].note` in words — *"paid SEK 1,595 at the
+  desk"* — not as a second figure on every row. Two numbers per line cannot be
+  scanned or added up by eye, and the row stops agreeing with the total above
+  it. Booking records (`stays[]`, `transport[]`) still store the currency that
+  was actually charged, because that is a fact about the document; the app
+  converts them for display.
+- **`expenses[].amount` is what was charged, never the share.**
+  `expenses[].splitBetween` says how many people it covered — 1 or absent means
+  it is all yours. Storing the divided figure instead means opening the expense
+  to edit it shows a division already applied, and saving applies it again.
+- **A booking's fare is an expense — and you do not write those rows.**
+  `scripts/lib/seed_expenses.py` turns every `stays[]` and `transport[]` record
+  into an `expenses[]` row at build time, linked by `relatedStayId` /
+  `relatedTransportId`, seeded at 0 when the document never stated a fare. Do
+  not hand-write those rows into `input/default.json`: the seeder is
+  idempotent and skips anything already linked, so a hand-written duplicate
+  becomes a second row for the same flight and quietly doubles the total.
+
+  What you *do* write is the booking itself, faithfully:
+
+  - `cost` — omit it if the document never says. Absent means "seed 0 and let
+    the traveller fill it in", which is a real, visible, editable row. It is
+    not a gap to apologise for.
+  - `currency` — the currency actually charged. The seeder converts using
+    `homeAmount` when you recorded one, and writes what was charged into the
+    expense's `note` in words.
+  - `guests` on a stay — the number the room was booked for. This is what the
+    share divides by. Omitting it posts the whole room to one traveller's
+    budget.
+
+  Anything you build that takes an amount and is *not* the one expense form is
+  a bug waiting to be reported as "I see lots of variations".
 - **`trip.rateHints`** — see "Record the document's own exchange rate" below.
 
 ### Do not restate the standard catalogue

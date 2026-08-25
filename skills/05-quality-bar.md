@@ -38,6 +38,47 @@ is. Everything below is what the harness cannot judge.
 - [ ] **No text wraps badly.** Card titles are short enough not to orphan a
       word; booking refs, addresses and URLs do not widen their container.
       Check at a narrow viewport, not just a wide one.
+- [ ] **An expense is one entity.** One form, one table, one row shape,
+      everywhere in the app. A flight, a hotel room, a coffee and a museum
+      ticket are the same kind of record; they differ in what is written in
+      them, never in how they are written or drawn.
+
+      This took **three rounds of the same feedback** to land, because each
+      round fixed the forms that were obviously alike and left the one filed
+      mentally under a different heading. First there were three sheets; then
+      two agreed and "Add the price" kept a currency picker on a one-currency
+      trip; then the forms matched but the screen still had five sections
+      showing overlapping subsets of the same money — "Flights and travel",
+      "Bookings not in your spend", "Your share, not logged yet", "By
+      category", "All expenses" — each with a different control on it.
+
+      The rules that settle it:
+
+      - **The field list is the contract.** Amount · Currency (stated, never
+        asked) · Category · Where · Whose cost · Split between · What for ·
+        Date · Comment. Identical from every entry point. If a field would be
+        wrong for one kind of expense, it is wrong for the entity.
+      - **0 is a figure, not a blank.** Every booking is seeded as a real
+        expense row at build time, at 0 when the document never stated a fare.
+        It sits in the table asking to be filled in. There is no "no fare
+        recorded" state, no warning panel listing the same rows again, and no
+        button that appears only while a field is empty.
+      - **Editing a row is the only way to change money.** No "Add the price",
+        no "Add my share", no "Save price". A pencil and a bin, on every row,
+        with no row exempt.
+      - **Bookings are still bookings.** Deleting the expense must not read as
+        deleting the flight; say so in the confirmation.
+      - **Every total goes through one reduction.** The budget, the category
+        breakdown, a destination's headline and the table's own footer are the
+        same money — compute them from one function, or two of them will
+        disagree and the traveller will not know which to believe.
+      - **A column that has to add up keeps its cents.** Rounding a headline
+        figure to whole units is good typography; doing it to a total under a
+        column of cents makes the table visibly not add up.
+      - **Count the doors, and fail when one is unreachable.** Enumerate every
+        control that takes an amount — on every screen, including a
+        destination page's own table — open each, and compare field lists. A
+        door the test cannot reach is a door it cannot vouch for.
 - [ ] **Anything a person typed, a person can retype.** Prices, names, dates,
       notes — if the app accepted a value once it must accept a correction,
       and the control cannot appear only while the field is empty. A figure

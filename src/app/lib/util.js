@@ -78,12 +78,17 @@ export function duration(fromDt, toDt) {
 /* ---------- Money ----------
    F15: never Intl's narrow symbol. "A$1,234" does not say which dollar; the
    code does. Returns parts so the code can be styled down. */
-export function moneyParts(amount, currency) {
+export function moneyParts(amount, currency, forceDigits) {
   if (amount === null || amount === undefined || isNaN(amount)) {
-    return { code: currency || '', amount: '—' };
+    return { code: currency || "", amount: "—" };
   }
   const abs = Math.abs(amount);
-  const digits = abs >= 1000 ? 0 : 2;
+  /* Big figures lose their cents by default: a headline stat reads better as
+     "AUD 1,909" than "AUD 1,909.12". A column that has to add up is the
+     exception — drop the cents there and the rows visibly do not sum to the
+     total under them, which is how a table stops being believed. Callers that
+     need every figure in one column formatted alike pass `forceDigits`. */
+  const digits = forceDigits !== undefined ? forceDigits : (abs >= 1000 ? 0 : 2);
   let text;
   try {
     text = new Intl.NumberFormat(undefined, {
@@ -92,8 +97,8 @@ export function moneyParts(amount, currency) {
   } catch { text = Number(amount).toFixed(digits); }
   return { code: currency || '', amount: text };
 }
-export function moneyText(amount, currency) {
-  const p = moneyParts(amount, currency);
+export function moneyText(amount, currency, forceDigits) {
+  const p = moneyParts(amount, currency, forceDigits);
   return p.code ? `${p.code} ${p.amount}` : p.amount;
 }
 

@@ -8,7 +8,7 @@ IDs, ISO-8601 datetimes carrying a real UTC offset, confirmed-vs-candidate).
 
 import re
 
-SCHEMA_VERSION = "1.5"
+SCHEMA_VERSION = "1.7"
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?([+-]\d{2}:\d{2}|Z)$")
@@ -81,6 +81,20 @@ COLLECTIONS = {
         # 1.1: set when this expense is the traveller's share of a group
         # booking, so the split is offered once and not twice.
         "relatedStayId": (False, "ref:stays"),
+        # 1.7: the same link for a leg. A booking's fare is an expense like
+        # any other — the link is what lets the booking show the figure the
+        # traveller entered instead of a second, differently-shaped record.
+        "relatedTransportId": (False, "ref:transport"),
+        # 1.6: how many people the charge was divided between. 1 or absent
+        # means the whole amount is the traveller's. `amount` always stays the
+        # figure that was charged — the share is derived — so opening an
+        # expense to edit it shows the number that was on the receipt rather
+        # than a division already applied once.
+        "splitBetween": (False, "num"),
+        # 1.6: free text for anything the fields cannot hold, most often the
+        # currency actually handed over: "SEK 1,595 at the desk". One trip has
+        # one currency now; this is where the exceptions get written down.
+        "note": (False, "str"),
     },
     "destinationNotes": {
         "id": (True, "str"), "cityId": (False, "ref:cities"),

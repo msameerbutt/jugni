@@ -220,6 +220,18 @@ Recorded so they are not rediscovered:
 - **Icon-name scanning must intersect with what is on disk.** A regex that
   required a hyphen silently missed five single-word icons, which shipped as
   empty boxes. Over-collect and intersect; never under-collect.
+- **A base rule after a media query cancels it, silently.** `.topbar` was
+  shown on phones by a rule inside `@media (max-width: 900px)` and hidden by a
+  base rule further down the file. One class each, so the cascade decides on
+  source order — the base rule won at every width and the mobile header never
+  rendered at all. Share and Trip data were unreachable on a phone for as long
+  as that file existed, and `make check` passed throughout because jsdom
+  applies no media queries and counts DOM nodes, not visible ones. The same
+  trap crosses files: `src/css` is concatenated in numbered order, so a hide
+  written in `03-layout.css` loses to a base rule in `05-thread.css`. Put the
+  override in the later file, beside what it modifies.
+  `scripts/lib/lint_css.py` now fails the build on this; it found a second
+  instance (`.rail__thread`) the moment it was written.
 - **Two nested `.app` grids collapsed the whole layout.** The template's mount
   point was `<div class="app" id="app">` and the Shell rendered another `.app`
   inside it, so the content column became one 254px track wide. jsdom has no
@@ -292,3 +304,18 @@ Copenhagen → Oslo → Abisko → Helsinki → Tallinn → Budapest → Vienna 
 9–29 Sep 2026. Primary traveller `sameer`, home currency AUD, dark theme.
 Four confirmed stays; Kiruna, Helsinki, Vienna and Prague are genuine gaps
 tracked as checklist tasks, not oversights.
+- **`moneyParts` drops the cents at 1000.** Deliberate for a headline stat —
+  "AUD 1,909" reads better than "AUD 1,909.12" — and wrong for anything in a
+  column that has to add up. A 25-row expense table showed rows of 137.40 and
+  28.39 under a footer reading "AUD 1,909", which is visibly not their sum.
+  Callers that need one column formatted alike pass `digits`. If two figures
+  on the same screen are the same money, they must be formatted the same way.
+- **The same feedback three times means the fix keeps missing one instance.**
+  "Every expense should look the same" was raised three times. Each round
+  unified the things already filed under "expense" and left whatever was filed
+  under a different heading — a booking's fare, a stay's price — untouched,
+  because it did not *feel* like an expense. The test agreed each time, since
+  it only compared the doors that already matched. When feedback repeats, do
+  not re-fix what you fixed: go and enumerate every instance of the category
+  first, including the ones you would not have called by that name, and make
+  the test fail when it cannot reach one.

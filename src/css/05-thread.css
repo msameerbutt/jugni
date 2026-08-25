@@ -59,6 +59,14 @@
 .rail__thread-dot { position: absolute; top: 50%; width: 8px; height: 8px; margin-left: -4px; transform: translateY(-50%); border-radius: 50%; background: var(--transit-blue); box-shadow: 0 0 0 3px var(--transit-blue-wash); }
 .rail__thread-label { font-family: var(--font-mono); font-size: var(--step--2); color: var(--ink-faint); white-space: nowrap; }
 
+/* The rail becomes a row of tabs on a phone and the progress thread has no
+   room in it. This override has to live here, after the base rules above: the
+   same hide written in 03-layout.css loses on source order, because files are
+   concatenated in their numbered order and this file comes later. */
+@media (max-width: 900px) {
+  .rail__thread { display: none; }
+}
+
 /* ---------- The thread at day resolution ----------
    Same manifest thread, one node per calendar day instead of per stop. Denser
    than a stop, because there are three times as many of them and the whole

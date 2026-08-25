@@ -74,30 +74,6 @@ export function TaskRow({ item, state, leavesView = false, showCity = true }) {
     </div>`;
 }
 
-export function ExpenseRow({ expense: e, state, showCity = true }) {
-  const home = state.trip.homeCurrency;
-  return html`
-    <div class="row">
-      <div class="row__body">
-        <div class="row__title">${e.label || A.categoryById(e.category).label}</div>
-        <div class="row__meta small">
-          <${Badge}>${e.category || 'other'}<//>
-          <span class="muted tkt">${fmtDate(e.date)}</span>
-          ${showCity && e.cityId && html`<span class="muted">${D.cityName(state, e.cityId)}</span>`}
-          ${e.relatedStayId && html`<span class="badge">your share</span>`}
-        </div>
-      </div>
-      <div class="row__side">
-        <${HomeMoney} amount=${e.amount} currency=${e.currency} home=${home}
-                      snapshotHome=${e.homeAmount} hints=${state.trip.rateHints}
-                      class="expense__amt" />
-        <button class="btn btn--ghost btn--icon hide-readonly" onClick=${() => A.editExpense(e.id)}
-                aria-label="Edit expense">
-          <${Icon} name="pencil" />
-        </button>
-      </div>
-    </div>`;
-}
 
 /* A transit leg as departure-board data. */
 export function LegCard({ leg, eyebrow }) {

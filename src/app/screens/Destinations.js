@@ -8,9 +8,10 @@
    city — this trip has "Kiruna / Abisko" and a Helsinki + Tallinn day. */
 import { html } from '../lib/html.js';
 import { Icon, Flag } from '../lib/icons.js';
-import { Stat, Money, HomeMoney, Empty, Section, PageHead, Stamp, Badge,
+import { Stat, Money, HomeMoney, Empty, PageHead, Stamp, Badge,
          Fold, FoldControls, CopyButton } from '../ui/components.js';
-import { TaskRow, ExpenseRow, LegLine, CityTitle, ForecastDay, Extra } from '../ui/parts.js';
+import { TaskRow, LegLine, CityTitle, ForecastDay, Extra } from '../ui/parts.js';
+import { ExpenseTable } from '../ui/expense-table.js';
 import { useAsync } from '../ui/hooks.js';
 import * as D from '../state/derive.js';
 import * as A from '../actions.js';
@@ -96,8 +97,6 @@ function DestinationDetail({ state, cityId }) {
     nightlife: D.extrasOfKind(state, city.id, 'nightlife'),
   };
   const events = D.eventsForCity(state, city, today);
-  const stayCost = D.stayCostInCity(state, city.id);
-  const missingPrices = D.bookingsMissingPrice(state, city.id);
   const home = state.trip.homeCurrency;
 
   const liveDeadline = stays.some((x) => x.cancellationDeadline && day(x.cancellationDeadline) >= today);
@@ -122,8 +121,8 @@ function DestinationDetail({ state, cityId }) {
                  note=${isNow ? 'you are here now' : ''} />
         <${Stat} label="Nights" value=${dayDiff(city.arriveDate, city.departDate) ?? 0} />
         <${Stat} label="You spent"
-                 value=${html`<${Money} amount=${D.spentInCity(state, city.id)} currency=${home} />`}
-                 note=${stayCost ? 'stay billed separately' : ''} />
+                 value=${html`<${Money} amount=${D.spentInCity(state, city.id)} currency=${home} digits=${2} />`}
+                 note="everything tagged with this stop" />
       </div>
       ${city.notes && html`<p class="small muted" style="margin-top:var(--space-4)">${city.notes}</p>`}
       <${QuickFacts} notes=${facts} cityId=${city.id} />
@@ -131,8 +130,6 @@ function DestinationDetail({ state, cityId }) {
       <${LocalForecast} city=${city} />
     </section>
 
-    ${missingPrices.length > 0 && html`
-      <${Section}><${MissingPrices} items=${missingPrices} state=${state} inline /><//>`}
 
     <div style="margin-top:var(--space-5)">
       <${Fold} id=${foldIds[0]} title="Stay" icon="bed-double" count=${stays.length}
@@ -218,12 +215,17 @@ function DestinationDetail({ state, cityId }) {
           </div>
         <//>`}
 
-      ${spend.length > 0 && html`
-        <${Fold} id=${foldIds[5]} title="Spending here" icon="wallet" count=${spend.length}>
-          <div class="rows">
-            ${spend.map((e) => html`<${ExpenseRow} key=${e.id} expense=${e} state=${state} showCity=${false} />`)}
-          </div>
-        <//>`}
+      ${/* The same table as the Expenses screen, filtered to this stop — same
+            columns, same sorting, same totals row, same edit and delete. A
+            destination's spending is not a different kind of spending, so it
+            does not get a different, smaller list that drifts away from the
+            real one. Adding from here tags the expense with this city. */ ''}
+      <${Fold} id=${foldIds[5]} title="Spending here" icon="wallet" count=${spend.length}
+               defaultOpen>
+        <${ExpenseTable} state=${state} cityId=${city.id}
+                         presetDate=${isNow ? today : day(city.arriveDate)}
+                         title=${`Expenses in ${city.name}`} />
+      <//>
     </div>`;
 }
 
@@ -273,8 +275,9 @@ function LocalForecast({ city }) {
 function StayCard({ stay, state }) {
   const today = todayISO();
   const passed = stay.cancellationDeadline && day(stay.cancellationDeadline) < today;
-  const alreadySplit = D.stayIsSplit(state, stay.id);
-  const people = D.partySize(state, stay);
+  /* Every booking has an expense row, seeded at 0 when the document never
+     stated a fare. `linked` is that row — the one thing this card edits. */
+  const linked = D.expenseForBooking(state, 'stay', stay.id);
 
   return html`
     <div class="stub" style="margin-bottom:var(--space-3)">
@@ -301,7 +304,7 @@ function StayCard({ stay, state }) {
           <span class="fact__k">Cost</span>
           <span class=${`fact__v ${stay.cost ? 'fact__v--group' : 'fact__v--zero'}`}>
             ${stay.cost
-              ? html`<${HomeMoney} amount=${stay.cost} currency=${stay.currency}
+              ? html`<${HomeMoney} showOriginal amount=${stay.cost} currency=${stay.currency}
                                    home=${state.trip.homeCurrency}
                                    snapshotHome=${stay.homeAmount}
                                    hints=${state.trip.rateHints} />`
@@ -319,59 +322,23 @@ function StayCard({ stay, state }) {
 
       ${stay.notes && html`<p class="small muted wrap-anywhere" style="margin-top:var(--space-3)">${stay.notes}</p>`}
 
-      <div class="notecard__foot hide-readonly">
-        ${D.isPriced(stay) && html`
-          <button class="btn btn--ghost" onClick=${() => A.addPriceFor('stay', stay.id)}>
-            <${Icon} name="pencil" /> Edit the price
-          </button>`}
-        ${stay.cost > 0
-          ? (alreadySplit
-            ? html`<span class="badge badge--done"><${Icon} name="circle-check" /> your share is logged</span>`
-            : html`<button class="btn" onClick=${() => A.splitStay(stay.id)}>
-                <${Icon} name="wallet" /> Add my share${people > 1 ? ` (÷${people})` : ''}
-              </button>`)
-          : html`<button class="btn btn--danger" onClick=${() => A.addPriceFor('stay', stay.id)}>
-              <${Icon} name="triangle-alert" /> Add the price
-            </button>`}
-      </div>
-    </div>`;
-}
-
-/* C5: a confirmed booking with no price is a real gap. Flag it in rust and
-   offer to fill it — but never invent a zero-value expense record, which
-   would make the expense count and the category chart lie. */
-export function MissingPrices({ items, state, inline }) {
-  return html`
-    <div class="card" style="border-color:var(--rust);background:var(--rust-wash)">
-      <div class="widget__head" style="margin-bottom:var(--space-3)">
-        <h2 class="card__title" style="color:var(--rust)">
-          <${Icon} name="triangle-alert" />
-          ${items.length} booking${items.length === 1 ? '' : 's'} with no price
-        </h2>
-      </div>
-      <p class="small" style="color:var(--rust);margin-bottom:var(--space-3)">
-        ${inline
-          ? 'Confirmed here, but the document never stated a fare — so it is missing from your spend.'
-          : 'These are confirmed, but no fare was recorded, so your total is lower than what you actually paid.'}
-      </p>
-      <div class="rows">
-        ${items.map((it) => html`
-          <div class="row" key=${it.id}>
-            <${Icon} name=${it.kind === 'stay' ? 'bed-double' : 'plane'} />
-            <div class="row__body">
-              <div class="row__title">${it.label}</div>
-              <div class="row__meta small muted">
-                ${it.ref && html`<span class="tkt">ref ${it.ref}</span>`}
-                ${it.cityId && state && html`<span>${D.cityName(state, it.cityId)}</span>`}
-              </div>
-            </div>
-            <div class="row__side hide-readonly">
-              <button class="btn btn--danger" onClick=${() => A.addPriceFor(it.kind, it.id)}>
-                Add the price
-              </button>
-            </div>
-          </div>`)}
-      </div>
+      ${/* One control, and it is the same one every expense has: an edit
+            icon. This card used to carry three different buttons — "Edit the
+            price", "Add my share" and "Add the price" — each opening a
+            different sheet, none of them the expense form. The room's fare is
+            an expense row like any other now, so it is edited like one. */ ''}
+      ${linked && html`
+        <div class="notecard__foot hide-readonly">
+          <span class="small muted">
+            Your share: <${Money} amount=${D.expenseShare(linked)} currency=${state.trip.homeCurrency} />
+            ${Number(linked.splitBetween) > 1 && ` (÷${linked.splitBetween})`}
+            ${!Number(linked.amount) && html`<span style="color:var(--rust)"> — no fare recorded yet</span>`}
+          </span>
+          <button class="btn btn--ghost btn--icon" onClick=${() => A.editExpense(linked.id)}
+                  aria-label=${`Edit the expense for ${stay.name}`}>
+            <${Icon} name="pencil" />
+          </button>
+        </div>`}
     </div>`;
 }
 

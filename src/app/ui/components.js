@@ -62,8 +62,8 @@ export function CopyButton({ value, label, children, class: cls = '' }) {
 }
 
 /* ---------- Money: the code is always stated (F15) ---------- */
-export function Money({ amount, currency, class: cls = '' }) {
-  const p = moneyParts(amount, currency);
+export function Money({ amount, currency, digits, class: cls = "" }) {
+  const p = moneyParts(amount, currency, digits);
   return html`<span class=${`money ${cls}`}>
     ${p.code && html`<span class="money__code">${p.code}</span>`}
     <span class="money__amount">${p.amount}</span>
@@ -77,7 +77,17 @@ export function Money({ amount, currency, class: cls = '' }) {
    at a check-in desk what matters is the number on the booking, and spec §4's
    currency-authority rule is about storing that faithfully. Primary figure:
    comparable. Secondary: what was actually charged. */
-export function HomeMoney({ amount, currency, home, snapshotHome, hints, class: cls = '', showOriginal = true }) {
+/* One figure, in the trip's own currency.
+
+   A trip has one currency now (Trip data → Edit trip), so a row showing both
+   the converted and the charged amount was two numbers where the reader wanted
+   one — and a list of them could not be scanned or added up by eye. Anything
+   that genuinely needs saying about what was handed over goes in the expense's
+   comment, in words.
+
+   `showOriginal` survives for the few places a booking's charged currency is
+   the point rather than the noise, such as a stay's own detail card. */
+export function HomeMoney({ amount, currency, home, snapshotHome, hints, class: cls = '', showOriginal = false }) {
   const rates = useRates();
   const isHome = !currency || currency === home;
 
@@ -278,7 +288,13 @@ export function Field({ label, name, type = 'text', value, options, hint, rows, 
   const id = `f_${name}`;
   let control;
 
-  if (type === 'select') {
+  if (type === 'static') {
+    /* A field the form states but does not ask about — the trip's currency,
+       which is set once in Trip data and is the same on every expense. Shown
+       as a field rather than omitted so the form still says what unit the
+       amount beside it is in. */
+    control = html`<output class="input input--static" id=${id} name=${name}>${value}</output>`;
+  } else if (type === 'select') {
     control = html`<select class="select" id=${id} name=${name}>
       ${(options || []).map((o) => {
         const val = o?.value !== undefined ? o.value : o;

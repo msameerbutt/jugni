@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.lib import paths, pwa, sprite
+from scripts.lib import paths, pwa, seed_expenses, sprite
 from scripts.lib.minify import minify_css
 
 FONT_ROLES = [("display", "Jugni Display"), ("sans", "Jugni Sans"), ("mono", "Jugni Mono")]
@@ -191,6 +191,15 @@ def main() -> int:
     elif trip is not None and args.trip:
         shown = input_path.relative_to(paths.ROOT) if input_path.is_relative_to(paths.ROOT) else input_path
         print(f"  input:{shown}")
+
+    # Every booking becomes a real expense row, seeded at 0 when the document
+    # never stated a fare. Done here rather than in the app so the rows are
+    # actual data — exportable, editable, and deletable for good — instead of
+    # something conjured at render time that reappears on every reload.
+    if trip is not None:
+        added = seed_expenses.seed(trip)
+        if added:
+            print(f"  money:{added} booking(s) seeded as expense rows")
 
     defaults = strip_comments(load_json(paths.ROOT / "default.json") or {})
 

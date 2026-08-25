@@ -124,6 +124,29 @@
 .view { animation: view-in var(--dur-slow) var(--ease-out) both; }
 @keyframes view-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
+/* Mobile header: brand, trip name, and the global share control (F5).
+
+   Body carries `overflow-x: hidden` (02-base.css) so a phone never gets a
+   sideways scrollbar — but that means anything pushed past the viewport edge
+   is not scrolled to, it is clipped and gone. The wordmark had no shrink
+   floor, so on a narrow phone it kept its full natural width and squeezed
+   the two action buttons — last in flex order — straight off the edge:
+   Share and Trip data rendered, just outside where anyone could see or tap
+   them. The buttons get a hard floor so they are the last thing to give;
+   the wordmark is what shrinks. */
+.topbar {
+  display: none;
+  position: sticky; top: 0; z-index: 25;
+  align-items: center; gap: var(--space-3);
+  margin-inline: calc(var(--space-4) * -1);
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar .rail__wordmark { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar > .btn { flex: none; }
+
 /* ---------- Mobile ---------- */
 
 @media (max-width: 900px) {
@@ -139,7 +162,11 @@
     border-right: 0; border-top: 1px solid var(--line);
     overflow: hidden; z-index: 30;
   }
-  .rail__brand, .rail__tripname, .navstub__count, .rail__thread { display: none; }
+  .rail__brand, .rail__tripname, .navstub__count { display: none; }
+  /* .rail__thread is hidden on mobile too, but its rule lives beside its own
+     styles in 05-thread.css — that file loads after this one, so a hide
+     written here would lose to the base rule there. The numbering IS the
+     cascade. */
   .rail__nav { flex-direction: row; gap: 0; flex: 1; min-width: 0; }
   .navstub {
     flex-direction: column; gap: 3px; flex: 1 1 0; min-width: 0;
@@ -163,15 +190,4 @@
   .navstub { padding: var(--space-3) 2px; }
 }
 
-/* Mobile header: brand, trip name, and the global share control (F5). */
-.topbar {
-  display: none;
-  position: sticky; top: 0; z-index: 25;
-  align-items: center; gap: var(--space-3);
-  margin-inline: calc(var(--space-4) * -1);
-  padding: var(--space-3) var(--space-4);
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
-}
 .topbar__title { min-width: 0; font-family: var(--font-display); font-size: var(--step-1); }

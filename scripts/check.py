@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.lib import paths
 from scripts.lib.lint_components import check as lint_components
+from scripts.lib.lint_css import check as lint_css
 
 # Endpoints the live widgets are *supposed* to call at runtime (spec §8).
 ALLOWED_HOSTS = {
@@ -83,6 +84,17 @@ def main() -> int:
             failures.append(f"script block {i} does not parse:\n{result.stderr.strip()}")
         else:
             print(f"  ok    javascript parses ({len(body) / 1024:.0f} KB)")
+
+    # --- 1b. no base rule silently cancels a media query ---
+    # jsdom applies no media queries and computes no layout, so the smoke test
+    # cannot see that an element the page depends on is display:none. The
+    # stylesheet is the only place this is visible.
+    styles = "\n".join(re.findall(r"<style>(.*?)</style>", html, re.S))
+    css_problems = lint_css(styles)
+    if css_problems:
+        failures.extend(css_problems)
+    else:
+        print("  ok    no base rule overrides a media query's display")
 
     # --- 2. offline promise: nothing remote may be needed to render ---
     remote = set()

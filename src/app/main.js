@@ -6,8 +6,8 @@ import * as Store from './state/store.js';
 import * as D from './state/derive.js';
 import { toast } from './ui/overlay.js';
 import { snapshot as fxSnapshot } from './data/currency.js';
-import { ensureRates, getRates } from './data/rates.js';
-import { bindRates, welcome } from './actions.js';
+import { ensureRates } from './data/rates.js';
+import { welcome } from './actions.js';
 import { plural } from './lib/util.js';
 
 function readEmbedded(id) {
@@ -52,7 +52,6 @@ function start() {
         owner ? `${safe(owner)} Jugni — ` : ''}${safe(state.trip.name || 'this trip')}</p>`);
   }
 
-  bindRates(getRates);
   render(html`<${App} />`, document.getElementById('app'));
 
   /* One request covers every currency on the trip, so each screen can show

@@ -7,16 +7,6 @@ export const primaryTraveler = (s) =>
 
 export const headcount = (s) => Math.max(1, s.travelers.length);
 
-/* How many people a bill divides between (schema 1.4).
-
-   A trip is not one party size. Five share the city apartments and three go
-   north to Abisko, so dividing every booking by the traveller count quietly
-   understates a share on the ones that were never for the whole group. The
-   booking's own `guests` is the answer whenever the document stated it;
-   headcount is only the fallback for a record that predates the field. */
-export const partySize = (s, stay) =>
-  Math.max(1, Number(stay?.guests) > 0 ? Number(stay.guests) : headcount(s));
-
 /* "Sameer's" — whose Jugni this is. Empty when no nickname is set, so the
    wordmark falls back to plain "Jugni" rather than reading "'s Jugni".
 
@@ -112,8 +102,33 @@ export function dueWithin(s, days, iso = todayISO()) {
 /* ---------- Money ----------
    Totals use the snapshotted homeAmount (spec §4), never a live rate, so a
    total never drifts after the fact. */
-export const spentHome = (s) =>
-  s.expenses.reduce((sum, e) => sum + (typeof e.homeAmount === 'number' ? e.homeAmount : 0), 0);
+/* What an expense actually cost the traveller.
+
+   `amount` is the figure that was charged; `splitBetween` says how many people
+   it covered. Storing the already-divided number instead would mean opening an
+   expense to edit it showed a division applied once, and saving applied it
+   again. */
+export const expenseShare = (e) => {
+  /* A record written before the trip had one currency carries its own
+     snapshotted home figure; trust it rather than re-deriving from an amount
+     that is in some other currency entirely. Everything written since stores
+     the two in agreement, so this is the same number either way. */
+  /* Rounded to the cent here, once, so a row and the total below it are
+     literally the same number. Summing unrounded shares and rounding only the
+     total made a table of 25 lines add up to 1909.12 while its own footer
+     said 1909.00 — the kind of wrong that makes a traveller distrust every
+     other figure on the screen. */
+  const cents = (v) => Math.round(v * 100) / 100;
+  if (typeof e?.homeAmount === 'number') return cents(e.homeAmount);
+  const n = Math.max(1, Number(e?.splitBetween) || 1);
+  return cents((Number(e?.amount) || 0) / n);
+};
+
+/* Every total in the app goes through `expenseShare`, so the budget, the
+   category breakdown, a destination's figure and the table's own total row
+   cannot disagree with each other. They used to: three of them read
+   `homeAmount` and one divided `amount` itself. */
+export const spentHome = (s) => s.expenses.reduce((sum, e) => sum + expenseShare(e), 0);
 export const unconverted = (s) =>
   s.expenses.filter((e) => typeof e.homeAmount !== 'number');
 
@@ -138,7 +153,7 @@ export function spendPerDay(s) {
 
 export const spentInCity = (s, cityId) =>
   s.expenses.filter((e) => e.cityId === cityId)
-    .reduce((sum, e) => sum + (e.homeAmount || 0), 0);
+    .reduce((sum, e) => sum + expenseShare(e), 0);
 
 /* F8: what a city's accommodation actually cost, kept separate from personal
    spend because these bookings are usually group totals. */
@@ -158,10 +173,94 @@ export function stayCostInCity(s, cityId) {
   };
 }
 
-/* A stay is "settled" once an expense references it — that is how the split
-   action avoids being applied twice. */
-export const stayIsSplit = (s, stayId) =>
-  s.expenses.some((e) => e.relatedStayId === stayId);
+/* What a booking cost you, as an ordinary expense.
+
+   A fare is not a different kind of money from a dinner, and it stopped being
+   a different kind of record: pricing a booking writes an expense linked back
+   to it, so the booking row can show that expense rather than a second,
+   differently-shaped figure with its own form behind it. */
+export const expenseForBooking = (s, kind, id) =>
+  s.expenses.find((e) => (kind === 'stay' ? e.relatedStayId : e.relatedTransportId) === id) || null;
+
+/* The other direction: what this expense is a record of, if anything.
+
+   Used to say so on the row and in the delete confirmation — deleting the fare
+   must not read as though it deletes the flight. */
+export function bookingForExpense(s, e) {
+  if (e?.relatedTransportId) {
+    const t = s.transport.find((x) => x.id === e.relatedTransportId);
+    if (t) return { kind: 'transport', label: `${t.from || '?'} → ${t.to || '?'}`, ref: t.bookingRef || '' };
+  }
+  if (e?.relatedStayId) {
+    const x = s.stays.find((y) => y.id === e.relatedStayId);
+    if (x) return { kind: 'stay', label: x.name, ref: x.confirmationNumber || '' };
+  }
+  return null;
+}
+
+/* ---------- The expense table ----------
+   One shape, used by the Expenses screen and by every destination page. The
+   destination page passes a cityId and gets the same columns, the same
+   sorting and the same totals over a subset — not a second, smaller design
+   that drifts away from the first one. */
+export const EXPENSE_SORTS = {
+  date: (r) => r.date || '',
+  label: (r) => (r.label || '').toLowerCase(),
+  category: (r) => r.category || '￿',   // Uncategorised sorts last, not first
+  city: (r) => (r.cityName || '￿').toLowerCase(),
+  amount: (r) => r.share,
+};
+
+export function expenseRows(s, { cityId = null, sort = 'date', dir = 'desc' } = {}) {
+  const source = cityId ? s.expenses.filter((e) => e.cityId === cityId) : s.expenses;
+  const rows = source.map((e) => ({
+    id: e.id,
+    label: e.label || '',
+    category: e.category || '',
+    cityId: e.cityId || '',
+    cityName: e.cityId ? cityName(s, e.cityId) : '',
+    date: day(e.date) || '',
+    amount: Number(e.amount) || 0,
+    splitBetween: Math.max(1, Number(e.splitBetween) || 1),
+    share: expenseShare(e),
+    currency: e.currency || s.trip.homeCurrency,
+    note: e.note || '',
+    booking: bookingForExpense(s, e),
+  }));
+
+  const key = EXPENSE_SORTS[sort] || EXPENSE_SORTS.date;
+  const sorted = sortBy(rows, key);
+  if (dir === 'desc') sorted.reverse();
+  /* Row numbers are assigned after sorting and stay with the visible order:
+     on a phone the table becomes a stack of boxes, and the number is how you
+     keep your place in it. */
+  return sorted.map((r, i) => ({ ...r, n: i + 1 }));
+}
+
+export const rowsTotal = (rows) => rows.reduce((sum, r) => sum + r.share, 0);
+
+/* Every category, ranked, so the breakdown can colour the expensive ones
+   differently from the cheap ones. `heat` is 0..1 against the biggest
+   category, which is what decides the colour — not the category's identity,
+   so a trip where transport is trivial does not paint it as though it were
+   the largest line. */
+export function categoryBreakdown(s, cityId = null) {
+  const source = cityId ? s.expenses.filter((e) => e.cityId === cityId) : s.expenses;
+  const map = new Map();
+  for (const e of source) {
+    const k = e.category || '';
+    map.set(k, (map.get(k) || 0) + expenseShare(e));
+  }
+  const rows = [...map].map(([category, total]) => ({ category, total }));
+  const max = rows.reduce((m, r) => Math.max(m, r.total), 0);
+  const grand = rows.reduce((sum, r) => sum + r.total, 0);
+  return sortBy(rows, (r) => -r.total).map((r, i) => ({
+    ...r,
+    rank: i,
+    heat: max > 0 ? r.total / max : 0,
+    pct: grand > 0 ? Math.round((r.total / grand) * 100) : 0,
+  }));
+}
 
 /* Confirmed bookings with no fare recorded (feedback cycle 02, C5).
 
@@ -189,103 +288,12 @@ export const coveredByBooking = (s, rec) => {
     && String(t.bookingRef || '').trim().toLowerCase() === ref);
 };
 
-/* Every booked thing, grouped by the reference it was booked under.
-
-   One ticket covering four flights is one purchase and four legs, and the
-   traveller needs both readings: what the booking cost, and which legs it
-   covers. Hiding the three unpriced legs once the fourth carries the fare —
-   which is what "covered by a sibling" used to do — answered the first
-   question by removing the second, so there was no longer anywhere to record
-   that a leg cost nothing on its own. Show them all; label them honestly. */
-export function bookingGroups(s) {
-  const rows = [
-    ...s.transport.map((t) => ({
-      kind: 'transport', id: t.id, ref: (t.bookingRef || '').trim(),
-      label: `${t.from || '?'} → ${t.to || '?'}`,
-      date: day(t.departDateTime), cost: t.cost, currency: t.currency,
-      homeAmount: t.homeAmount, priced: isPriced(t),
-    })),
-    ...s.stays.map((x) => ({
-      kind: 'stay', id: x.id, ref: (x.confirmationNumber || '').trim(),
-      label: x.name, date: day(x.checkIn), cost: x.cost, currency: x.currency,
-      homeAmount: x.homeAmount, priced: isPriced(x),
-    })),
-  ];
-
-  const groups = [];
-  const byRef = new Map();
-  for (const r of rows) {
-    /* No reference means it stands alone — two unrelated bookings must never
-       be merged just because neither carries a number. */
-    const key = r.ref ? `${r.kind}:${r.ref.toLowerCase()}` : `solo:${r.id}`;
-    if (!byRef.has(key)) {
-      const g = { ref: r.ref, kind: r.kind, items: [], total: 0, currency: '', paid: false };
-      byRef.set(key, g);
-      groups.push(g);
-    }
-    const g = byRef.get(key);
-    g.items.push(r);
-    if (Number(r.cost) > 0) {
-      g.total += Number(r.cost);
-      g.currency = g.currency || r.currency || '';
-      g.paid = true;
-    }
-  }
-  for (const g of groups) {
-    g.items = sortBy(g.items, (r) => r.date || '');
-    /* Answered means every leg has been given a figure, zero included. A
-       group where one leg carries the fare and the rest are still blank is
-       priced but not finished — the traveller has more to say about it. */
-    g.answered = g.items.every((r) => r.priced);
-  }
-  return sortBy(groups, (g) => g.items[0]?.date || '');
-}
-
-export function bookingsMissingPrice(s, cityId) {
-  const out = [];
-
-  /* One ticket routinely covers several legs — Melbourne to Lahore is four
-     flights on one reference, and the receipt prices the journey, not the
-     hops. Once any leg of a booking carries the fare, its siblings are paid
-     for, and listing them as "no price recorded" states the opposite of what
-     the screen above it says. A leg with no reference at all is judged on its
-     own, which is what keeps a genuinely unpriced ticket visible. */
-  for (const t of s.transport) {
-    if (isPriced(t)) continue;
-    /* Its sibling carries the fare, so nothing is missing from the total.
-       It still appears under Bookings, where it can be answered. */
-    if (coveredByBooking(s, t)) continue;
-    out.push({
-      kind: 'transport', id: t.id, ref: t.bookingRef || '',
-      label: `${t.from || '?'} → ${t.to || '?'}`,
-      cityId: '',
-      date: day(t.departDateTime),
-    });
-  }
-  for (const x of s.stays) {
-    if (isPriced(x)) continue;
-    /* Neither a fare nor a confirmation number means this was never a booking:
-       it is a spare room at a relative's, recorded so the address is in the
-       app at midnight in an arrivals hall. Chasing it for a missing price
-       invents a debt. A stay WITH a reference and no fare is the real case
-       this panel is for — a room a companion booked and paid for. */
-    if (!x.confirmationNumber) continue;
-    out.push({ kind: 'stay', id: x.id, ref: x.confirmationNumber || '', label: x.name, cityId: x.cityId });
-  }
-
-  if (!cityId) return sortBy(out, (o) => o.date || '');
-  /* On a destination page, show only what belongs to that stop: its stay, and
-     any leg that touches it. */
-  const city = cityById(s, cityId);
-  const legIds = new Set(legsForCity(s, city).map((l) => l.id));
-  return out.filter((o) => (o.kind === 'stay' ? o.cityId === cityId : legIds.has(o.id)));
-}
 
 export function spendByCategory(s) {
   const map = {};
   for (const e of s.expenses) {
     const k = e.category || 'other';
-    map[k] = (map[k] || 0) + (typeof e.homeAmount === 'number' ? e.homeAmount : 0);
+    map[k] = (map[k] || 0) + expenseShare(e);
   }
   return Object.entries(map)
     .map(([category, total]) => ({ category, total }))

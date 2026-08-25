@@ -1,207 +1,116 @@
+/* Expenses — three blocks, in this order:
+
+     1. the budget: what there is, what has gone, what is left
+     2. where it went, by category, with the expensive ones drawn hot
+     3. the table: every line, sortable, editable, totalled
+
+   Nothing else. This screen previously carried five sections showing
+   overlapping subsets of the same money with a different control on each —
+   "Flights and travel", "Bookings not in your spend", "Your share, not logged
+   yet", "By category", "All expenses" — and a traveller could not tell which
+   of them their total came from. */
+
 import { html } from '../lib/html.js';
 import { Icon } from '../lib/icons.js';
-import { Stat, Money, HomeMoney, Meter, Empty, Section, PageHead } from '../ui/components.js';
-import { ExpenseRow } from '../ui/parts.js';
-import { MissingPrices } from './Destinations.js';
+import { Stat, Money, Meter, Section, PageHead } from '../ui/components.js';
+import { ExpenseTable, categoryAccent } from '../ui/expense-table.js';
 import * as D from '../state/derive.js';
 import * as A from '../actions.js';
-import { sortBy, pct, plural, fmtDate } from '../lib/util.js';
+import { plural, titleCase } from '../lib/util.js';
 
-const CATEGORY_HUE = {
-  food: 'clay', transport: 'indigo', stay: 'plum', activity: 'cyan',
-  shopping: 'magenta', fees: 'slate', other: 'sage',
-};
+/* Where it went, biggest first.
 
-/* Every booking, with every leg it covers.
-
-   A four-flight ticket has one fare and four legs. Listing only the leg that
-   happens to carry the fare loses the other three, and with them any way to
-   record that they cost nothing on their own — which is exactly what a
-   traveller wants to write down for the second, third and fourth flight of a
-   return ticket. */
-function BookingGroup({ group, state }) {
+   The expensive line reads hot, the cheapest reads cool. Which line that is
+   differs by trip, so the colour comes from the ranking rather than from a
+   fixed hue per category. Colour never carries it alone: the bar length and
+   the percentage say the same thing. */
+export function CategoryBreakdown({ state, cityId = null }) {
+  const rows = D.categoryBreakdown(state, cityId);
   const home = state.trip.homeCurrency;
+  if (!rows.length) return null;
+
+  /* Banded by rank, not by proportion. A trip with two categories at 54% and
+     46% has one expensive line and one cheap one — a proportional threshold
+     called both of them hot, which is a colour saying nothing at all. */
+  const heatBand = (r) => (r.rank === 0 ? 'hot' : r.rank === rows.length - 1 ? 'cool' : 'warm');
+
   return html`
-    <div class="card card--flat" style="margin-bottom:var(--space-3)">
-      <div class="widget__head" style="margin-bottom:var(--space-2)">
-        <span class="eyebrow">
-          ${group.ref ? html`ref ${group.ref}` : (group.kind === 'stay' ? 'Stay' : 'Booking')}
-          ${group.items.length > 1 && html` · ${plural(group.items.length, 'leg')}`}
-        </span>
-        ${group.paid
-          ? html`<${HomeMoney} amount=${group.total} currency=${group.currency} home=${home}
-                        hints=${state.trip.rateHints} />`
-          : html`<span class="small muted">no fare recorded</span>`}
-      </div>
-      <div class="rows">
-        ${group.items.map((r) => html`
-          <div class="row" key=${r.id}>
-            <${Icon} name=${r.kind === 'stay' ? 'bed-double' : 'plane'} />
-            <div class="row__body">
-              <div class="row__title">${r.label}</div>
-              ${r.date && html`<div class="row__meta small muted tkt">${fmtDate(r.date)}</div>`}
-            </div>
-            <div class="row__side">
-              ${Number(r.cost) > 0
-                ? html`<${HomeMoney} amount=${r.cost} currency=${r.currency} home=${home}
-                               snapshotHome=${r.homeAmount} hints=${state.trip.rateHints} />`
-                : r.priced
-                  ? html`<span class="small muted">no extra cost</span>`
-                  : html`<button class="btn btn--ghost hide-readonly"
-                            onClick=${() => A.addPriceFor(r.kind, r.id)}>
-                      <${Icon} name="plus" /> Add the price
-                    </button>`}
-              ${/* A figure already entered can still be wrong. Every row that
-                    shows a price offers the way to change it. */ ''}
-              ${r.priced && html`
-                <button class="btn btn--ghost btn--icon hide-readonly"
-                        onClick=${() => A.addPriceFor(r.kind, r.id)}
-                        aria-label=${`Edit the price of ${r.label}`}>
-                  <${Icon} name="pencil" />
-                </button>`}
-            </div>
-          </div>`)}
-      </div>
+    <div class="cats">
+      ${rows.map((r) => html`
+        <div class=${`cat cat--${heatBand(r)}`} key=${r.category || 'none'}
+             data-accent=${categoryAccent(r.category)}>
+          <div class="cat__head">
+            <span class="cat__name">
+              ${r.category ? titleCase(r.category) : html`<span class="faint">Uncategorised</span>`}
+            </span>
+            <span class="cat__pct tkt">${r.pct}%</span>
+          </div>
+          <div class="cat__amt"><${Money} amount=${r.total} currency=${home} digits=${2} /></div>
+          <div class="cat__bar" role="presentation">
+            <div class="cat__fill" style=${`width:${Math.round(r.heat * 100)}%`}></div>
+          </div>
+        </div>`)}
     </div>`;
 }
 
 export function Expenses({ state }) {
   const b = D.budgetState(state);
   const home = state.trip.homeCurrency;
-  const list = sortBy(state.expenses, (e) => e.date || '').reverse();
   const perDay = D.spendPerDay(state);
-  const pending = D.unconverted(state);
-  const byCat = D.spendByCategory(state);
-  const unsplit = state.stays.filter((x) => Number(x.cost) > 0 && !D.stayIsSplit(state, x.id));
-  const missingPrices = D.bookingsMissingPrice(state);
-  /* Transport only. Stays already appear twice on this screen — under
-     "Bookings not in your spend", where the action is, and on their own
-     destination pages — so listing them a third time here was two sections
-     with almost the same title showing the same nine rows. */
-  const bookings = D.bookingGroups(state).filter((g) => g.kind === 'transport');
+  const cats = D.categoryBreakdown(state);
 
   return html`
     <${PageHead} eyebrow=${b.budget ? 'Tracking against budget' : 'No budget set'} title="Expenses"
       actions=${html`
-        <button class="btn btn--primary" onClick=${() => A.quickExpense()}>
-          <${Icon} name="plus" /> Log spend
+        <button class="btn btn--primary hide-readonly" onClick=${() => A.quickExpense()}>
+          <${Icon} name="plus" /> Add expense
         </button>`} />
 
-    ${/* F15: spent and remaining given real weight, the currency code stated
-          rather than an ambiguous narrow symbol. */ ''}
+    ${/* ---- 1. the budget ---- */ ''}
     <section class="card card--raised">
       <div class="budget">
         <div class="statbar statbar--divided">
+          <${Stat} label="Budget"
+                   value=${b.budget
+                     ? html`<${Money} amount=${b.budget} currency=${home} digits=${2} />`
+                     : html`<span class="faint">not set</span>`} />
           <${Stat} label="Spent" modifier="stat--hero"
-                   value=${html`<${Money} amount=${b.spent} currency=${home} />`}
+                   value=${html`<${Money} amount=${b.spent} currency=${home} digits=${2} />`}
                    note=${perDay ? html`<${Money} amount=${perDay} currency=${home} /> per day so far` : ''} />
           <${Stat} label=${b.over ? 'Over budget' : 'Left to spend'}
                    modifier=${`stat--hero ${b.over ? 'stat--over' : ''}`}
-                   value=${html`<${Money} amount=${Math.abs(b.left)} currency=${home} />`}
-                   note=${b.budget ? html`of <${Money} amount=${b.budget} currency=${home} />` : 'no budget set'} />
+                   value=${b.budget
+                     ? html`<${Money} amount=${Math.abs(b.left)} currency=${home} digits=${2} />`
+                     : html`<span class="faint">—</span>`}
+                   note=${b.budget ? `${b.pct}% of budget used` : 'set a budget in Trip data'} />
         </div>
 
-        <div class="budget__meter">
-          ${b.budget > 0 && html`
+        ${b.budget > 0 && html`
+          <div class="budget__meter">
             <${Meter} value=${b.spent} max=${b.budget} over=${b.over} large />
-            <div class="budget__legend">
-              <span class="tkt">${b.pct}% used</span>
-              <span class="tkt">${plural(state.expenses.length, 'entry', 'entries')}</span>
-            </div>`}
-          ${byCat.length > 0 && html`
-            <div class="catbar" role="presentation">
-              ${byCat.map((c) => html`
-                <span class="catbar__seg" key=${c.category}
-                      data-accent=${CATEGORY_HUE[c.category] || 'sage'}
-                      style=${`width:${pct(c.total, b.spent)}%;background:var(--accent)`}></span>`)}
-            </div>`}
-          ${b.over && html`
-            <span class="budget__over">
-              <${Icon} name="triangle-alert" />
-              <${Money} amount=${b.spent - b.budget} currency=${home} /> over budget
-            </span>`}
-        </div>
+            ${b.over && html`
+              <span class="budget__over">
+                <${Icon} name="triangle-alert" />
+                <${Money} amount=${b.spent - b.budget} currency=${home} /> over budget
+              </span>`}
+          </div>`}
       </div>
-
-      ${pending.length > 0 && html`
-        <p class="nudge nudge--warn" style="margin-top:var(--space-4)">
-          <${Icon} name="wifi-off" />
-          <span>${plural(pending.length, 'expense')} saved offline without a converted amount.
-          They fill in next time you're online.</span>
-        </p>`}
     </section>
 
-    ${bookings.length > 0 && html`
-      <${Section} title="Flights and travel" icon="plane" count=${bookings.length}
-        actions=${html`<span class="small muted">every leg, and what each booking cost</span>`}>
-        ${bookings.map((g) => html`<${BookingGroup} key=${g.ref || g.items[0].id}
-                                     group=${g} state=${state} />`)}
+    ${/* ---- 2. where it went ---- */ ''}
+    ${cats.length > 0 && html`
+      <${Section} title="Where it went" icon="chart-column"
+        actions=${html`<span class="small muted">${plural(cats.length, 'category', 'categories')}
+                       · brightest is the biggest</span>`}>
+        <${CategoryBreakdown} state=${state} />
       <//>`}
 
-    ${missingPrices.length > 0 && html`
-      <${Section}><${MissingPrices} items=${missingPrices} state=${state} /><//>`}
-
-    ${/* F8: accommodation is recorded on the booking, but these are group
-          totals — so offer the split rather than quietly counting it. */ ''}
-    ${unsplit.length > 0 && html`
-      <${Section} title="Your share, not logged yet" icon="bed-double" count=${unsplit.length}>
-        <p class="small muted" style="margin-bottom:var(--space-3)">
-          These are confirmed stays with a cost on the booking. They are usually billed to the
-          whole party, so they don't count against your budget until you add your share.
-        </p>
-        <div class="card card--flat"><div class="rows">
-          ${unsplit.map((x) => html`
-            <div class="row" key=${x.id}>
-              <${Icon} name="bed-double" />
-              <div class="row__body">
-                <div class="row__title">${x.name}</div>
-                <div class="row__meta small muted">${D.cityName(state, x.cityId)}</div>
-              </div>
-              <div class="row__side">
-                <${HomeMoney} amount=${x.cost} currency=${x.currency} home=${home}
-                              snapshotHome=${x.homeAmount} hints=${state.trip.rateHints} />
-                <button class="btn btn--ghost hide-readonly" onClick=${() => A.splitStay(x.id)}>
-                  Add my share
-                </button>
-              </div>
-            </div>`)}
-        </div></div>
-      <//>`}
-
-    ${byCat.length > 0 && html`
-      <${Section} title="By category" icon="chart-column">
-        <div class="card card--flat"><div class="rows">
-          ${byCat.map((c) => html`
-            <div class="row" key=${c.category} data-accent=${CATEGORY_HUE[c.category] || 'sage'}>
-              <div class="row__body">
-                <div class="row__title">${A.categoryById(c.category).label}</div>
-                <div style="margin-top:var(--space-2)">
-                  <div class="meter"><div class="meter__fill"
-                    style=${`width:${pct(c.total, b.spent)}%;background:var(--accent)`}></div></div>
-                </div>
-              </div>
-              <div class="row__side">
-                <${Money} amount=${c.total} currency=${home} />
-                <span class="small muted tkt">${pct(c.total, b.spent)}%</span>
-              </div>
-            </div>`)}
-        </div></div>
-      <//>`}
-
-    <${Section} title="All expenses" icon="wallet" count=${list.length}>
-      ${list.length
-        ? html`<div class="card card--flat"><div class="rows">
-            ${list.map((e) => html`<${ExpenseRow} key=${e.id} expense=${e} state=${state} />`)}
-          </div></div>`
-        : html`<${Empty} icon="wallet" title="Nothing logged yet"
-            body="Two taps: amount and category. Date and city fill themselves in.">
-            <button class="btn btn--primary hide-readonly" onClick=${() => A.quickExpense()}>
-              Log your first spend
-            </button>
-          <//>`}
+    ${/* ---- 3. every line ---- */ ''}
+    <${Section} title="All expenses" icon="wallet" count=${state.expenses.length}>
+      <${ExpenseTable} state=${state} title="Every expense" />
     <//>
 
     <button class="btn btn--primary quickcap hide-readonly" onClick=${() => A.quickExpense()}>
-      <${Icon} name="plus" /> Log spend
+      <${Icon} name="plus" /> Add expense
     </button>`;
 }

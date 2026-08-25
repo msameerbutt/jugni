@@ -1,6 +1,6 @@
 {
   "trip": {
-    "schemaVersion": "1.5",
+    "schemaVersion": "1.7",
     "name": "Sample Trip 2026",
     "startDate": "2026-09-09",
     "endDate": "2026-09-30",

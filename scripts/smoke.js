@@ -376,87 +376,170 @@ function goto(route) {
     }
   }
 
-  /* A figure that can be entered can be corrected.
+  /* The expense table: one entity, one shape, every line reachable.
 
-     Every price in this app is typed by a person, from a card statement or a
-     memory, sometimes as a placeholder. "Add the price" appeared only while
-     the field was blank, so the first value entered was the last — a typo or
-     an estimate was permanent. Anything showing a price offers a way in. */
+     An expense is a flight, a room, a coffee or a museum ticket — the same
+     record either way. This block asserts the consequences: every booking in
+     the trip has a line, every line can be edited and deleted, and the table's
+     own total agrees with the rows above it. Previously this screen carried
+     five sections showing overlapping subsets of the same money, each with a
+     different control, and no two of them agreed. */
   {
     await goto('expenses');
-    await wait(160);
-    const rows = [...doc.querySelectorAll('.section .row')]
-      .filter((r) => r.querySelector('.row__title'));
-    const mute = rows.filter((r) => !r.querySelector('button')
-      && !/By category|Transport|Food|Stay|Activity|Shopping|Fees|Other/.test(
-        r.querySelector('.row__title')?.textContent || ''));
-
-    if (!rows.length) {
-      console.log('  --    editable prices: nothing costed in this trip');
-    } else if (mute.length) {
-      fail(`${mute.length} costed row(s) on Expenses offer no way to change the figure: `
-           + mute.slice(0, 3).map((r) => r.querySelector('.row__title').textContent.trim()).join('; '));
-    } else {
-      console.log(`  ok    all ${rows.length} rows on Expenses can be edited`);
-    }
-  }
-
-  /* Every booked leg is listed, whatever its price.
-
-     A four-flight ticket has one fare. An earlier fix stopped the three
-     unpriced legs being reported as "missing from your spend" — correctly —
-     but did it by hiding them, which left nowhere to record that they cost
-     nothing on their own. Pricing is a state to show, never a reason to
-     disappear. */
-  {
+    await wait(200);
     const baked = JSON.parse(doc.getElementById('jugni-data')?.textContent?.trim() || '{}');
-    const legs = baked.transport || [];
-    if (!legs.length) {
-      console.log('  --    bookings: no transport in this trip');
+    const table = doc.querySelector('.xt__table');
+    const bodyRows = [...doc.querySelectorAll('.xt__table tbody tr')];
+
+    if (!table) {
+      fail('the Expenses screen has no expense table');
+    } else if (!bodyRows.length) {
+      console.log('  --    expense table: no expenses in this trip');
     } else {
-      await goto('expenses');
-      await wait(160);
-      const view = (doc.querySelector('[data-view]')?.textContent || '').replace(/\s+/g, ' ');
-      const absent = legs.filter((t) => !view.includes(`${t.from || '?'} → ${t.to || '?'}`));
-      if (absent.length) {
-        fail(`${absent.length} booked leg(s) do not appear on Expenses: `
-             + absent.map((t) => t.bookingRef || t.id).join(', '));
+      /* Every line is editable AND deletable — the two controls the traveller
+         was promised, on every row, with no row exempt. */
+      const noEdit = bodyRows.filter((r) => !r.querySelector('[aria-label^="Edit expense"]'));
+      const noDel = bodyRows.filter((r) => !r.querySelector('[aria-label^="Delete expense"]'));
+      if (noEdit.length || noDel.length) {
+        fail(`${noEdit.length} row(s) cannot be edited and ${noDel.length} cannot be deleted `
+             + '— every expense carries both');
       } else {
-        /* And a multi-leg reference must read as one booking, not as N. */
-        const refs = {};
-        for (const t of legs) if (t.bookingRef) refs[t.bookingRef] = (refs[t.bookingRef] || 0) + 1;
-        const multi = Object.entries(refs).filter(([, n]) => n > 1);
-        const grouped = multi.every(([ref, n]) => view.includes(`ref ${ref}`) && view.includes(`${n} legs`));
-        if (multi.length && !grouped) {
-          fail(`a multi-leg booking is not grouped under its reference: ${multi.map(([r]) => r).join(', ')}`);
+        console.log(`  ok    all ${bodyRows.length} table rows can be edited and deleted`);
+      }
+
+      /* Row numbers exist and run 1..n in the visible order. On a phone the
+         table becomes a stack of boxes and the number is the only way to keep
+         your place in it. */
+      const ns = [...doc.querySelectorAll('.xt__table tbody td.xt__n')].map((td) => td.textContent.trim());
+      const expected = bodyRows.map((_, i) => String(i + 1));
+      if (ns.join(',') !== expected.join(',')) {
+        fail(`row numbers do not run 1..${bodyRows.length} in display order: got ${ns.slice(0, 6).join(',')}…`);
+      } else {
+        console.log(`  ok    rows numbered 1..${bodyRows.length}, matching display order`);
+      }
+
+      /* Every booking is a line. A four-flight ticket is four lines, because
+         a leg that cannot be given its own figure is a leg that can never be
+         recorded as having cost nothing. */
+      const bookings = [
+        ...(baked.transport || []).map((t) => `${t.from || '?'} → ${t.to || '?'}`),
+        ...(baked.stays || []).map((x) => x.name),
+      ].filter(Boolean);
+      const view = (table.textContent || '').replace(/\s+/g, ' ');
+      const absent = bookings.filter((label) => !view.includes(label));
+      if (absent.length) {
+        fail(`${absent.length} booking(s) have no line in the expense table: `
+             + absent.slice(0, 4).join(', '));
+      } else if (bookings.length) {
+        console.log(`  ok    all ${bookings.length} bookings appear as expense lines`);
+      }
+
+      /* A booking whose document never stated a fare is a line reading 0.00 —
+         present, editable, asking to be filled in. Not a hidden row, and not
+         a warning panel listing the same thing a second time. */
+      const seeded = JSON.parse(window.localStorage.getItem(tripStorageKey()) || 'null')
+        || baked;
+      const linked = (seeded.expenses || []).filter((e) => e.relatedTransportId || e.relatedStayId);
+      const bookingCount = (baked.transport || []).length + (baked.stays || []).length;
+      if (linked.length !== bookingCount) {
+        fail(`${bookingCount} bookings but ${linked.length} linked expense rows `
+             + '— every booking is seeded as an expense at build time');
+      } else if (bookingCount) {
+        const zeros = linked.filter((e) => !Number(e.amount)).length;
+        console.log(`  ok    ${linked.length} bookings seeded as expenses`
+                    + (zeros ? `, ${zeros} awaiting a figure at 0.00` : ''));
+      }
+
+      /* The phone layout, as far as anything can check it here.
+
+         jsdom applies no media queries and computes no layout, so the stack of
+         labelled boxes a phone gets is invisible to every other assertion. What
+         *is* checkable is the thing it depends on: each cell carries the header
+         it belongs to as `data-label`, which the stylesheet prints in front of
+         it. A cell that loses its label becomes an unlabelled value in a stack
+         of eight, and nobody can tell which field they are reading. */
+      const cells = [...doc.querySelectorAll('.xt__table tbody td')];
+      const unlabelled = cells.filter((td) => !td.getAttribute('data-label'));
+      if (unlabelled.length) {
+        fail(`${unlabelled.length} table cell(s) carry no data-label — on a phone they `
+             + 'render as bare values with nothing saying which field they are');
+      } else {
+        console.log(`  ok    all ${cells.length} cells labelled for the phone layout`);
+      }
+
+      /* The total row is the table's own sum. It moves with any filter applied
+         to the table, so it can never disagree with the rows above it. */
+      const money = (s) => parseFloat(String(s).replace(/[^0-9.]/g, '')) || 0;
+      const rowSum = [...doc.querySelectorAll('.xt__table tbody td.xt__num')]
+        .reduce((sum, td) => sum + money((td.textContent || '').split('your share')[0]), 0);
+      const shown = money(doc.querySelector('.xt__total')?.textContent || '0');
+      if (Math.abs(rowSum - shown) > 0.05) {
+        fail(`the table totals ${shown.toFixed(2)} but its rows add to ${rowSum.toFixed(2)}`);
+      } else {
+        console.log(`  ok    total row agrees with its ${bodyRows.length} lines (${shown.toFixed(2)})`);
+      }
+
+      /* Sorting actually sorts. A header that looks clickable and reorders
+         nothing is worse than no sorting at all. */
+      const firstBefore = bodyRows[0]?.textContent?.trim();
+      const amountHead = [...doc.querySelectorAll('.xt__sort')]
+        .find((b) => /Amount/.test(b.textContent || ''));
+      if (!amountHead) {
+        fail('the expense table offers no sort control for Amount');
+      } else {
+        amountHead.click();
+        await wait(180);
+        const after = [...doc.querySelectorAll('.xt__table tbody td.xt__num')]
+          .map((td) => money((td.textContent || '').split('your share')[0]));
+        const descending = after.every((v, i) => i === 0 || after[i - 1] >= v);
+        const firstAfter = doc.querySelector('.xt__table tbody tr')?.textContent?.trim();
+        if (!descending) {
+          fail('sorting by Amount did not order the rows by amount');
+        } else if (bodyRows.length > 1 && firstAfter === firstBefore
+                   && new Set(after).size > 1) {
+          fail('sorting by Amount changed nothing');
         } else {
-          console.log(`  ok    all ${legs.length} booked legs listed`
-                      + (multi.length ? `, ${multi.length} grouped by reference` : ''));
+          console.log('  ok    sorting by Amount reorders the table');
         }
       }
     }
   }
 
-  /* Zero is an answer. A leg recorded as costing nothing — because the fare
-     sits on another leg of the same ticket — must not be listed as having no
-     price. Treating 0 as an empty box made that leg ask forever. */
+  /* A destination's spending is the same table, filtered.
+
+     The city's headline figure and its table must be the same number: they
+     used to come from different reductions — one reading `homeAmount`, the
+     other dividing `amount` — and disagreed by a few cents on any split. */
   {
     const baked = JSON.parse(doc.getElementById('jugni-data')?.textContent?.trim() || '{}');
-    const zeroed = [...(baked.transport || []), ...(baked.stays || [])]
-      .filter((r) => r.cost === 0);
+    const withSpend = (baked.cities || []).find((c) =>
+      (baked.expenses || []).some((e) => e.cityId === c.id));
 
-    await goto('expenses');
-    await wait(120);
-    const panel = (doc.querySelector('[data-view]')?.textContent || '').replace(/\s+/g, ' ');
-    const wrong = zeroed.filter((r) => panel.includes(
-      r.name || `${r.from || '?'} → ${r.to || '?'}`));
-
-    if (!zeroed.length) {
-      console.log('  --    explicit zero: nothing in this trip is recorded as free');
-    } else if (wrong.length) {
-      fail(`${wrong.length} booking(s) recorded as costing 0 are still listed as unpriced`);
+    if (!withSpend) {
+      console.log('  --    destination spending: no expense is tagged with a city');
     } else {
-      console.log(`  ok    a booking recorded as 0 counts as answered, not blank`);
+      await goto(`destinations/${withSpend.id}`);
+      await wait(260);
+      const money = (s) => parseFloat(String(s).replace(/[^0-9.]/g, '')) || 0;
+      const stat = [...doc.querySelectorAll('.stat')].find((s) => /You spent/.test(s.textContent || ''));
+      const head = money((stat?.textContent || '').replace('You spent', ''));
+      const table = doc.querySelector('.xt__table');
+
+      if (!table) {
+        fail(`${withSpend.name} has spending but no expense table on its page`);
+      } else if (!doc.querySelector('.xt__table [aria-label^="Edit expense"]')) {
+        fail(`${withSpend.name}'s expense table offers no way to edit a line`);
+      } else if (!doc.querySelector('.xt [aria-label], .xt button')) {
+        fail(`${withSpend.name}'s expense table offers no way to add a line`);
+      } else {
+        const total = money(doc.querySelector('.xt__total')?.textContent || '0');
+        if (Math.abs(head - total) > 0.05) {
+          fail(`${withSpend.name} reports ${head.toFixed(2)} at the top of the page `
+               + `but its table totals ${total.toFixed(2)} — same money, two reductions`);
+        } else {
+          console.log(`  ok    ${withSpend.name}: headline figure matches its table (${total.toFixed(2)})`);
+        }
+      }
     }
   }
 
@@ -546,6 +629,111 @@ function goto(route) {
       /* Leave it closed, or every later query hits a modal-covered page. */
       dialog.close();
       await wait(60);
+    }
+  }
+
+  /* One expense form, whichever door you came through.
+
+     There were three, with different fields and different wording, so what a
+     traveller could record depended on which button they happened to press.
+     Assert the field set is identical from every entry point, and that no row
+     shows two currencies — a trip has one currency, and anything else that
+     needs saying goes in the comment. */
+  {
+    await goto('expenses');
+    await wait(180);
+    const fieldsOf = (sheet) => [...sheet.querySelectorAll('[name]')]
+      .map((i) => i.name).sort().join(',');
+    const openBy = async (match) => {
+      /* Normalised: a button reading `<svg/> Add expense` has newlines and
+         indentation in its textContent, and an anchored pattern misses it
+         entirely — which reads as "this door does not exist". */
+      const btn = [...doc.querySelectorAll('button')]
+        .find((b) => match.test(
+          (b.textContent || '').replace(/\s+/g, ' ').trim()
+          || (b.getAttribute('aria-label') || '').trim()));
+      if (!btn) return null;
+      btn.click();
+      await wait(150);
+      const sheet = [...doc.querySelectorAll('dialog.sheet')].find((d) => d.open);
+      const fields = sheet ? fieldsOf(sheet) : null;
+      sheet?.close();
+      await wait(60);
+      return fields;
+    };
+
+    /* Every door on every screen, not just the ones that already agreed.
+
+       The last version of this check compared two doors and passed while a
+       third — "Add the price" — kept its own sheet with a currency picker on
+       a one-currency trip. A door this check cannot reach is a door it cannot
+       vouch for, so failing to find one is a failure, never a skip. */
+    const seen = [];
+    for (const [name, match] of [
+      ['Add expense (page)', /^Add expense$/],
+      ['Edit expense (row)', /^Edit expense/],
+    ]) {
+      const fields = await openBy(match);
+      if (fields) seen.push([name, fields]);
+    }
+
+    /* And the same form again from a destination page's own table, which is a
+       different component rendering the same entity. */
+    const baked = JSON.parse(doc.getElementById('jugni-data')?.textContent?.trim() || '{}');
+    const anyCity = (baked.cities || [])[0];
+    if (anyCity) {
+      await goto(`destinations/${anyCity.id}`);
+      await wait(240);
+      for (const [name, match] of [
+        ['Add expense (destination)', /^Add expense$/],
+        ['Edit expense (destination row)', /^Edit expense/],
+      ]) {
+        const fields = await openBy(match);
+        if (fields) seen.push([name, fields]);
+      }
+      await goto('expenses');
+      await wait(180);
+    }
+
+    const REQUIRED = ['amount', 'category', 'cityId', 'currency', 'date', 'label', 'mine', 'note', 'splitBetween'];
+    if (seen.length < 3) {
+      fail(`only ${seen.length} way(s) to record an expense found `
+           + `(${seen.map(([n]) => n).join(', ') || 'none'}) — expected the page's own `
+           + `Add and Edit plus a destination page's. A door that is not reachable `
+           + `here is a door this check cannot prove agrees with the others.`);
+    } else {
+      const [, first] = seen[0];
+      const odd = seen.filter(([, f]) => f !== first);
+      const missing = REQUIRED.filter((f) => !first.split(',').includes(f));
+      if (odd.length) {
+        fail('the expense form differs by entry point: '
+             + seen.map(([n, f]) => `${n}=[${f}]`).join('  '));
+      } else if (missing.length) {
+        fail(`the expense form is missing ${missing.join(', ')} — the field list is `
+             + `the contract: [${first}]`);
+      } else {
+        console.log(`  ok    one expense form, identical from all ${seen.length} entry points`);
+      }
+    }
+
+    /* The one control the traveller asked to be gone. Pricing a booking is
+       editing its expense; a second, differently-worded button for the same
+       act is exactly what three rounds of feedback were about. */
+    const strays = [...doc.querySelectorAll('button')]
+      .map((b) => (b.textContent || '').replace(/\s+/g, ' ').trim())
+      .filter((t) => /^(Add the price|Add my share|Log spend|Save price|Edit the price)$/.test(t));
+    if (strays.length) {
+      fail(`${strays.length} bespoke money control(s) still on screen: ${[...new Set(strays)].join(', ')}`
+           + ' — an expense is added with "Add expense" and changed with the edit icon');
+    } else {
+      console.log('  ok    no bespoke "add the price" / "add my share" controls remain');
+    }
+
+    const twoCurrency = doc.querySelectorAll('.money-alt').length;
+    if (twoCurrency) {
+      fail(`${twoCurrency} amount(s) on Expenses show two currencies — a trip has one`);
+    } else {
+      console.log('  ok    every amount reads in the trip currency, once');
     }
   }
 

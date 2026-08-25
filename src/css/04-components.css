@@ -142,6 +142,14 @@
 @media (max-width: 620px) {
   .statbar--divided > .stat + .stat { border-left: 0; padding-left: 0; }
 }
+/* `--step-4` is sized for one hero figure alone in a card (Recap's grid of
+   four). Three of them side by side in one divided row (Expenses' Budget /
+   Spent / Left to spend) run out of column width before the digits do —
+   `.stat__value` has no wrap point, so an overlong figure bleeds into the
+   next stat's column instead of stopping at its own. One step down still
+   reads as the hero figure; it just leaves room for five- and six-digit
+   totals without touching the stat beside it. */
+.statbar--divided .stat--hero .stat__value { font-size: var(--step-3); }
 
 /* ---------- Rows ---------- */
 
@@ -305,3 +313,19 @@ dialog.sheet::backdrop { background: rgba(8,11,10,.55); backdrop-filter: blur(3p
   background: var(--surface-sunk); border-left: 3px solid var(--rust);
   font-weight: 600;
 }
+
+/* A field the form states rather than asks about — the trip's currency. It
+   looks like an input so the row reads as a pair with the amount beside it,
+   but it takes no focus and offers no control, because there is nothing here
+   to decide. */
+.input--static {
+  display: flex; align-items: center;
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+  background: var(--surface-sunk);
+  cursor: default;
+}
+
+/* The amount and its currency: the figure gets the room, the unit gets just
+   enough to be read. */
+.formgrid--amount { grid-template-columns: 2fr 1fr; }

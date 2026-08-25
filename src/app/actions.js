@@ -6,9 +6,10 @@ import { Icon } from './lib/icons.js';
 import { openSheet, closeSheet, toast, confirmDestructive } from './ui/overlay.js';
 import * as Store from './state/store.js';
 import * as D from './state/derive.js';
-import { snapshot as fxSnapshot } from './data/currency.js';
-import { toHome } from './data/rates.js';
-import { uid, todayISO, moneyText, titleCase, day, addDays, fmtDate } from './lib/util.js';
+/* No rate lookup here any more: the trip has one currency, so an amount the
+   traveller types is already the home figure. Conversion survives only in
+   `ui/components.js`, for records written before that was true. */
+import { uid, todayISO, moneyText, titleCase, day, addDays, fmtDate, plural } from './lib/util.js';
 import { save, pick } from './lib/files.js';
 import { buildICS } from './lib/ics.js';
 import { buildSnapshot } from './lib/snapshot.js';
@@ -29,6 +30,13 @@ export function categories() {
 }
 export const categoryById = (id) => categories().find((c) => c.id === id)
   || { id, label: titleCase(String(id || 'general').replace(/-/g, ' ')), icon: 'circle-dot', accent: 'slate' };
+
+/* The categories an expense can carry. Deliberately a short, closed list: a
+   category the traveller has to invent is a category nothing else on the trip
+   shares, and the breakdown stops being comparable. Category is optional —
+   "— none —" is a real answer, and rolls up as Uncategorised. */
+export const EXPENSE_CATEGORIES =
+  ['food', 'transport', 'stay', 'activity', 'shopping', 'fees', 'other'];
 
 export const cityOptions = () => [
   { value: '', label: '— none —' },
@@ -135,94 +143,151 @@ export function deleteTask(id) {
 
 /* ---------------------------------------------------------------- expenses */
 
-/* Quick-capture (spec §12): amount and category, everything else defaulted.
-   This is the only way to add data while actually travelling, so it has to be
-   short enough to do standing at a counter. */
-export function quickExpense(viewDate) {
+/* An expense is one entity, with one shape, everywhere in the app.
+
+   There is exactly one form and one table. A flight, a hotel room, a coffee
+   and a museum ticket are all expenses — they differ in what is written in
+   them, never in how they are recorded or how they are drawn. Anything that
+   takes an amount and is not this form is a bug: three separate sheets is how
+   a traveller ended up meeting three different ways to write down what
+   something cost.
+
+   The fields, in order, are the whole contract:
+
+     Amount · Currency (stated, never asked) · Category · Where ·
+     Whose cost · What for · Comment
+
+   Date is here too. It is not on the traveller's list, but every expense
+   already carries one, the table sorts on it and Today's log needs it — a
+   form that cannot set it would leave a field only a rebuild could fix. */
+function expenseForm(e = {}, presetDate) {
   const state = s();
   const home = state.trip.homeCurrency;
-  const date = viewDate || todayISO();
-  const city = D.cityOn(state, date);
-  const cats = ['food', 'transport', 'stay', 'activity', 'shopping', 'fees', 'other'];
+  const people = D.headcount(state);
+  const split = Number(e.splitBetween) > 1 ? Number(e.splitBetween) : '';
 
+  return () => html`
+    <div class="formgrid formgrid--amount">
+      <${Field} label="Amount" name="amount" type="number"
+                step="0.01" min="0" inputmode="decimal" placeholder="0.00"
+                value=${e.amount ?? 0} autofocus big
+                hint="0 is fine — an expense with no figure yet is still an expense" />
+      ${/* One trip, one currency (Trip data → Edit trip). Stated so the amount
+            beside it has a unit, never asked, because a second currency on the
+            screen is how the rows stopped adding up to the total. */ ''}
+      <${Field} label="Currency" name="currency" type="static" value=${home || '—'}
+                hint="from Trip data" />
+    </div>
+
+    <div class="formgrid">
+      <${Field} label="Category" name="category" type="select"
+                value=${e.category || ''}
+                options=${[{ value: '', label: '— none —' },
+                           ...EXPENSE_CATEGORIES.map((c) => ({ value: c, label: titleCase(c) }))]} />
+      <${Field} label="Where" name="cityId" type="select"
+                value=${e.cityId ?? (presetDate ? D.cityOn(state, presetDate)?.id : '') ?? ''}
+                options=${cityOptions()} />
+    </div>
+
+    <div class="formgrid">
+      <${Field} label="Whose cost" name="mine" type="select"
+                value=${split ? 'split' : 'mine'}
+                options=${[{ value: 'mine', label: 'All mine' },
+                           { value: 'split', label: 'Split share' }]} />
+      ${/* Defaults to the number of people on the trip, and can be overridden
+            per expense: a room booked for two out of a party of five is a real
+            case, and a fixed divisor reports a share that is simply wrong. */ ''}
+      <${Field} label="Split between" name="splitBetween" type="number" min="1"
+                value=${split || people}
+                hint=${`${plural(people, 'traveller')} on this trip · ignored unless "Split share"`} />
+    </div>
+
+    <${Field} label="What for" name="label" value=${e.label}
+              placeholder="dinner, taxi, museum tickets" />
+
+    <div class="formgrid">
+      <${Field} label="Date" name="date" type="date"
+                value=${day(e.date) || presetDate || todayISO()} />
+      <${Field} label="Comment" name="note" value=${e.note}
+                placeholder="e.g. paid SEK 1,595 at the desk"
+                hint="anything the fields above cannot hold" />
+    </div>`;
+}
+
+/* `presetCity` is passed by a destination page's own table, so an expense
+   added from Berlin is tagged Berlin without the traveller having to say so
+   twice. Still a field on the form — a preset that cannot be corrected is a
+   guess dressed as a fact. */
+export function quickExpense(presetDate, presetCity) {
   openSheet({
-    title: 'Log spend',
+    title: 'Add expense',
     confirmLabel: 'Save',
-    render: () => html`
-      <div class="amountpad">
-        <${Field} label="Amount" name="amount" type="number" step="0.01" min="0"
-                  inputmode="decimal" placeholder="0.00" autofocus big />
-        <${Field} label="Currency" name="currency" type="select"
-                  value=${lastCurrency() || home} options=${currencyOptions()} />
-      </div>
-      <${Field} label="Category" name="category" type="select" value="food"
-                options=${cats.map((c) => ({ value: c, label: titleCase(c) }))} />
-      <div class="formgrid">
-        <${Field} label="Date" name="date" type="date" value=${date}
-                  hint=${date !== todayISO() ? 'Using the date you are viewing' : undefined} />
-        <${Field} label="City" name="cityId" type="select" value=${city?.id || ''} options=${cityOptions()} />
-      </div>
-      <${Field} label="Label" name="label" placeholder="optional" />`,
+    render: expenseForm(presetCity ? { cityId: presetCity } : {}, presetDate),
     onSubmit: (v) => saveExpense(null, v),
   });
 }
 
+/* The only way to change an expense, whichever screen it was drawn on and
+   whatever it happens to be a record of. A booking's fare is edited here too:
+   it is an expense like any other, seeded at 0 when the document did not say
+   what it cost. */
 export function editExpense(id) {
   const e = s().expenses.find((x) => x.id === id);
   if (!e) return;
+  const booking = D.bookingForExpense(s(), e);
   openSheet({
     title: 'Edit expense',
-    render: () => html`
-      <div class="amountpad">
-        <${Field} label="Amount" name="amount" type="number" step="0.01" value=${e.amount} autofocus big />
-        <${Field} label="Currency" name="currency" type="select" value=${e.currency} options=${currencyOptions()} />
-      </div>
-      <${Field} label="Label" name="label" value=${e.label} />
-      <div class="formgrid">
-        <${Field} label="Category" name="category" type="select" value=${e.category}
-                  options=${['food','transport','stay','activity','shopping','fees','other']
-                    .map((c) => ({ value: c, label: titleCase(c) }))} />
-        <${Field} label="Date" name="date" type="date" value=${day(e.date)} />
-      </div>
-      <${Field} label="City" name="cityId" type="select" value=${e.cityId || ''} options=${cityOptions()} />`,
+    confirmLabel: 'Save',
+    detail: booking ? html`<strong>${booking.label}</strong>${
+      booking.ref ? ` · ref ${booking.ref}` : ''}` : '',
+    render: expenseForm(e),
     secondary: { label: 'Delete', icon: 'trash-2', onClick: () => deleteExpense(id) },
     onSubmit: (v) => saveExpense(id, v),
   });
 }
 
+/* Zero is a legitimate figure, not an empty box.
+
+   Four flights on one ticket have one fare: the total goes on one leg and the
+   others genuinely cost nothing. Refusing 0 left those legs asking forever,
+   and it is also what every booking starts at before anyone has looked up
+   what it cost. Only a blank field is "no answer", and a blank field means 0. */
 function saveExpense(id, v) {
-  const amount = parseFloat(v.amount);
-  if (!amount || amount <= 0) { toast('Enter an amount'); return; }
+  const raw = String(v.amount ?? '').trim();
+  const amount = raw === '' ? 0 : parseFloat(raw);
+  if (!Number.isFinite(amount) || amount < 0) { toast('Enter an amount, or 0'); return; }
+
   const home = s().trip.homeCurrency;
-  const currency = v.currency || home;
+  /* `amount` stays the figure that was charged; the share is derived from it.
+     Storing the already-divided number instead meant opening an expense to
+     edit it showed a division applied once, and saving applied it again. */
+  const splitBetween = v.mine === 'split'
+    ? Math.max(1, parseInt(v.splitBetween, 10) || 1) : 1;
+  const share = Math.round((amount / splitBetween) * 100) / 100;
   const recordId = id || uid('exp');
-  rememberCurrency(currency);
 
   Store.mutate((d) => {
-    const base = {
-      label: v.label || '', category: v.category || 'other',
-      amount, currency, date: v.date || todayISO(), cityId: v.cityId || '',
-      /* The stored conversion belongs to the old amount; re-snapshot it. */
-      homeAmount: null, homeCurrency: home, rateSnapshotDate: null,
-    };
     const existing = d.expenses.find((x) => x.id === recordId);
+    const base = {
+      label: v.label || '', category: v.category || '',
+      amount, currency: home, date: v.date || todayISO(), cityId: v.cityId || '',
+      splitBetween, note: v.note || '',
+      /* Same currency throughout, so the share IS the home figure and there is
+         no rate to wait for. A record carrying a foreign currency from an
+         older file keeps its own snapshot until it is edited. */
+      homeAmount: share, homeCurrency: home,
+      rateSnapshotDate: v.date || todayISO(),
+    };
     if (existing) Object.assign(existing, base);
     else {
       d.expenses.push({ id: recordId, ...base });
       Store.logEvent(d, 'expense', 'expense', recordId,
-        `Logged ${moneyText(amount, currency)} — ${base.label || base.category}`);
+        `Logged ${moneyText(share, home)} — ${base.label || base.category || 'expense'}`);
     }
   });
-
-  /* Snapshot the rate once, now (spec §4). Offline it stays null and gets
-     backfilled on the next online boot. */
-  fxSnapshot(amount, currency, home, v.date).then((snap) => {
-    if (snap.homeAmount === null) { toast("Saved — will convert when you're online"); return; }
-    Store.mutate((d) => {
-      const rec = d.expenses.find((x) => x.id === recordId);
-      if (rec) Object.assign(rec, snap);
-    });
-  });
+  toast(splitBetween > 1
+    ? `Saved — your share is ${moneyText(share, home)} of ${moneyText(amount, home)}`
+    : 'Saved');
 }
 
 export function deleteExpense(id) {
@@ -231,179 +296,15 @@ export function deleteExpense(id) {
   confirmDestructive({
     title: 'Delete this expense?',
     what: `${moneyText(e.amount, e.currency)}${e.label ? ` — ${e.label}` : ''}`,
+    detail: D.bookingForExpense(s(), e)
+      ? 'The booking itself stays on your itinerary — only this expense line goes.'
+      : '',
     onConfirm() {
       const undo = Store.mutateUndoable((d) => { d.expenses = d.expenses.filter((x) => x.id !== id); });
       if (undo) toast('Expense deleted', { label: 'Undo', onClick: undo });
     },
   });
 }
-
-/* F8: a confirmed group booking becomes a personal expense on request, never
-   automatically — the split is a claim about who paid, and only the traveller
-   knows that. */
-export function splitStay(stayId) {
-  const state = s();
-  const stay = state.stays.find((x) => x.id === stayId);
-  if (!stay) return;
-  const people = D.partySize(state, stay);
-  const home = state.trip.homeCurrency;
-
-  openSheet({
-    title: 'Add your share',
-    render: () => html`
-      <p class="small muted">
-        <strong>${stay.name}</strong> is booked at
-        ${' '}${moneyText(stay.cost, stay.currency)}${homeHint(stay)} for the whole party.
-        Add your share as an expense so it counts against your budget.
-      </p>
-      <div class="formgrid">
-        <${Field} label="Split between" name="people" type="number" min="1" value=${people}
-                  hint=${Number(stay.guests) > 0
-                    ? `this room was booked for ${people}`
-                    : `${people} travellers on this trip`} />
-        <${Field} label="Or enter your share" name="override" type="number" step="0.01"
-                  placeholder="optional" hint=${`in ${stay.currency || home}`} />
-      </div>`,
-    confirmLabel: 'Add expense',
-    onSubmit(v) {
-      const people2 = Math.max(1, parseInt(v.people, 10) || 1);
-      const override = parseFloat(v.override);
-      const amount = Number.isFinite(override) && override > 0
-        ? override
-        : Math.round((Number(stay.cost) / people2) * 100) / 100;
-      const currency = stay.currency || home;
-      const id = uid('exp');
-
-      Store.mutate((d) => {
-        d.expenses.push({
-          id, label: stay.name, category: 'stay', amount, currency,
-          homeAmount: null, homeCurrency: home, rateSnapshotDate: null,
-          date: day(stay.checkIn) || todayISO(), cityId: stay.cityId,
-          relatedStayId: stay.id,
-        });
-        Store.logEvent(d, 'expense', 'stay', stay.id,
-          `Added share of ${stay.name}: ${moneyText(amount, currency)}`);
-      });
-
-      fxSnapshot(amount, currency, home, stay.checkIn).then((snap) => {
-        if (snap.homeAmount === null) return;
-        Store.mutate((d) => {
-          const rec = d.expenses.find((x) => x.id === id);
-          if (rec) Object.assign(rec, snap);
-        });
-      });
-      toast(`Added ${moneyText(amount, currency)} to your spend`);
-    },
-  });
-}
-
-/* The sheet quotes the booking's own currency, since that is what the document
-   says — but a traveller budgeting in AUD needs the comparable figure beside
-   it, not a mental conversion. */
-function homeHint(stay) {
-  const home = s().trip.homeCurrency;
-  if (!stay.currency || stay.currency === home) return '';
-  const converted = toHome(stay.cost, stay.currency, ratesSnapshot());
-  return converted === null ? '' : ` (about ${moneyText(converted, home)})`;
-}
-let ratesSnapshot = () => ({ base: '', rates: {} });
-export const bindRates = (fn) => { ratesSnapshot = fn; };
-
-/* C5: fill in a fare the document never stated. Writes the price onto the
-   booking itself, then offers the split for a group stay — rather than
-   creating a placeholder expense that would misreport the totals. */
-export function addPriceFor(kind, id) {
-  const state = s();
-  const rec = kind === 'stay'
-    ? state.stays.find((x) => x.id === id)
-    : state.transport.find((x) => x.id === id);
-  if (!rec) return;
-
-  const label = kind === 'stay' ? rec.name : `${rec.from || '?'} → ${rec.to || '?'}`;
-  /* A fare that has been recorded can be wrong: a typo, an estimate entered
-     before the card was billed, or a zero written when the real number was
-     not to hand. This sheet is the only place a booking's price is set, so it
-     has to be the place it is corrected too. */
-  const known = D.isPriced(rec);
-  const ref = rec.bookingRef || rec.confirmationNumber;
-
-  openSheet({
-    title: known ? 'Edit the price' : 'Add the price',
-    confirmLabel: 'Save price',
-    render: () => html`
-      <p class="small muted">
-        <strong>${label}</strong>${ref ? ` (ref ${ref})` : ''}
-        ${known
-          ? ' — change what this booking cost, or set it to 0 if the fare sits on another leg.'
-          : ' is confirmed, but no fare was recorded — so it is missing from your spend.'}
-      </p>
-      <div class="amountpad">
-        <${Field} label="Amount" name="cost" type="number" step="0.01" min="0"
-                  inputmode="decimal" placeholder="0.00" autofocus big
-                  value=${known ? rec.cost : ''}
-                  hint=${rec.bookingRef
-                    ? `0 is fine if another leg of ${rec.bookingRef} carries the fare`
-                    : '0 is fine if this one cost nothing'} />
-        <${Field} label="Currency" name="currency" type="select"
-                  value=${rec.currency || state.trip.homeCurrency} options=${currencyOptions()} />
-      </div>
-      ${!known && html`
-        <${Field} label="Was this the whole party's booking?" name="group" type="select" value="no"
-                  options=${[{ value: 'no', label: 'No — this is my cost' },
-                             { value: 'yes', label: `Yes — split between ${
-                               kind === 'stay' ? D.partySize(state, rec) : D.headcount(state)}` }]} />`}`,
-    onSubmit(v) {
-      /* Zero is a legitimate answer, not an empty box. Four flights on one
-         ticket have one fare: the total goes on one leg and the others are
-         genuinely nothing, and refusing 0 left them asking forever. Only a
-         blank field is "no answer". */
-      const cost = v.cost === '' || v.cost === undefined ? NaN : parseFloat(v.cost);
-      if (!Number.isFinite(cost) || cost < 0) { toast('Enter an amount, or 0'); return; }
-      const currency = v.currency || state.trip.homeCurrency;
-
-      Store.mutate((d) => {
-        const list = kind === 'stay' ? d.stays : d.transport;
-        const target = list.find((x) => x.id === id);
-        if (target) { target.cost = cost; target.currency = currency; }
-      });
-
-      if (cost === 0) { toast('Recorded as no extra cost'); return; }
-      /* Correcting a figure updates the booking and stops there. Creating a
-         personal expense is a separate claim about who paid, and it has
-         already been made — or deliberately not — the first time round. */
-      if (known) { toast('Price updated'); return; }
-      if (kind === 'stay' && v.group === 'yes') { splitStay(id); return; }
-
-      /* A leg or a solo booking becomes your expense directly. */
-      const expenseId = uid('exp');
-      const home = s().trip.homeCurrency;
-      const share = v.group === 'yes'
-        ? Math.round((cost / D.headcount(s())) * 100) / 100 : cost;
-
-      Store.mutate((d) => {
-        d.expenses.push({
-          id: expenseId, label, category: kind === 'stay' ? 'stay' : 'transport',
-          amount: share, currency, homeAmount: null, homeCurrency: home,
-          rateSnapshotDate: null,
-          date: day(rec.departDateTime || rec.checkIn) || todayISO(),
-          cityId: rec.cityId || '',
-          ...(kind === 'stay' ? { relatedStayId: id } : {}),
-        });
-        Store.logEvent(d, 'expense', kind, id, `Recorded price for ${label}: ${moneyText(share, currency)}`);
-      });
-
-      fxSnapshot(share, currency, home).then((snap) => {
-        if (snap.homeAmount === null) return;
-        Store.mutate((d) => {
-          const saved = d.expenses.find((x) => x.id === expenseId);
-          if (saved) Object.assign(saved, snap);
-        });
-      });
-      toast(`Price recorded for ${label}`);
-    },
-  });
-}
-
 /* ------------------------------------------------------------------- notes */
 
 const noteForm = (note = {}, presetCity) => () => html`
