@@ -167,6 +167,24 @@ saved copy holds ticked tasks the rebuild has never seen.
 
 ---
 
+## Put it on your phone's home screen
+
+The single file works everywhere, but it opens in a browser tab. To get a real
+app icon, full-screen, offline-capable:
+
+```
+make host TRIP=mytrip        # writes trips/mytrip/hosted/
+```
+
+Upload the contents of that folder to any static host, then **Add to Home
+Screen**. Full walkthrough, including a free host with a Google login in front
+of it: [`docs/hosting-and-pwa.md`](docs/hosting-and-pwa.md).
+
+The single file is unchanged and still the thing to keep — a host that lapses
+in three years is how a trip quietly stops existing.
+
+---
+
 ## After the first run, `raw/` is an inbox
 
 Once a file has been read, its text lives in `trips/mytrip/intake/` and **the
@@ -195,6 +213,7 @@ rather than deleting them.
 | Check the trip data is sound | `make validate TRIP=mytrip` |
 | Prove the built file actually runs | `make check TRIP=mytrip` |
 | Remove build artefacts (never your data) | `make clean TRIP=mytrip` |
+| Put it on a phone's home screen | `make host TRIP=mytrip` |
 | See every target | `make help` |
 
 `TRIP=` defaults to `sample`, so a bare `make check` verifies the example.

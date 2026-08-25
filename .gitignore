@@ -13,6 +13,9 @@ input.json
 output-*.json
 output.json
 
+# The hosted bundle is a build artefact; rebuild it with `make host`.
+trips/*/hosted/
+
 # --- Build output ---
 dist/
 *.pyc

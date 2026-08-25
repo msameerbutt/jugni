@@ -39,6 +39,7 @@ when the `Dockerfile` changes in a way the cache might miss.
 | `make build` | Bundle `src/` into one self-contained file. `TRIP=<slug>` bakes that trip's data in; without an `input.json` you get the generic empty shell. |
 | `make generate` | Run intake over `raw/` (or `FROM=summary.txt`), write extracts, then merge a Convert candidate into `input.json` and build. Intake **accumulates**: a file is extracted once (matched by content hash), and an original taken out of `raw/` keeps its extract, marked `archived`. |
 | `make sample` | Rebuild `trips/sample` — the only committed trip — from the reference trip, then validate, build and check it. **Run after any schema or content change.** |
+| `make host` | Also emit `trips/<slug>/hosted/` — the same app as an installable PWA (manifest, service worker, icons), then check it. See [`docs/hosting-and-pwa.md`](docs/hosting-and-pwa.md). |
 | `make blank` | Build the empty shell (build path (b)) to `dist/jugni.html`. |
 | `make icons` | Vendor icon/flag SVGs from the image into `src/icons/`. `FLAGS=all` for every flag. |
 | `make check` | **Verify** a built file: parse the bundle, then run it in jsdom with `fetch` rejecting. Not optional. |
@@ -114,6 +115,12 @@ later. Live widgets call free, no-key APIs directly and always cache their last
 success; a failed call shows cached data with a "last updated" stamp, and a
 first run with no network shows an explicit "not yet available" state, never a
 blank.
+
+**The single file stays self-contained (§8).** `make host` adds a *second*
+output for hosting — manifest, service worker, icons — and the PWA tags live
+only in that copy. Never put a `<link rel="manifest">` or a service-worker
+registration into `jugni.html`: it would reference siblings that do not exist
+in the one artifact whose promise is that nothing it needs lives elsewhere.
 
 **Browser storage is scoped per trip.** Every trip builds to a file named
 `jugni.html`, so trip state is keyed `jugni.trip.v1::<tripKey>` from the

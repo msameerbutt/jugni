@@ -32,7 +32,7 @@ FROM  ?=
 # Which real trip `make sample` derives the committed example from.
 FROM_TRIP ?= euro2026
 
-.PHONY: help build check icons generate update validate test sample blank shell run down rebuild image clean
+.PHONY: help build check icons generate update validate test sample host blank shell run down rebuild image clean
 
 help: ## Show this help
 	@echo "Jugni — make targets (all run inside Docker)"
@@ -90,6 +90,11 @@ sample: image ## Rebuild the committed sample trip from the reference trip, then
 	$(MAKE) --no-print-directory validate TRIP=sample
 	$(MAKE) --no-print-directory build TRIP=sample
 	$(MAKE) --no-print-directory check TRIP=sample
+
+host: image ## Also emit an installable web-app bundle in trips/<slug>/hosted/
+	$(RUN) python scripts/build.py --trip "$(TRIP)" --name "$(NAME)" --input "$(INPUT)" \
+		--out "$(OUT)" --host-dir "trips/$(TRIP)/hosted"
+	$(MAKE) --no-print-directory check OUT=trips/$(TRIP)/hosted/index.html
 
 blank: image ## Build the empty shell — build path (b), imports a trip in-browser
 	$(RUN) python scripts/build.py --out "dist/jugni.html"

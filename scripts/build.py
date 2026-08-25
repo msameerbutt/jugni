@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.lib import paths, sprite
+from scripts.lib import paths, pwa, sprite
 from scripts.lib.minify import minify_css
 
 FONT_ROLES = [("display", "Jugni Display"), ("sans", "Jugni Sans"), ("mono", "Jugni Mono")]
@@ -164,6 +164,9 @@ def main() -> int:
     ap.add_argument("--input", default="", help="explicit path to a trip file (overrides --name)")
     ap.add_argument("--out", required=True, help="output .html path")
     ap.add_argument("--no-minify", action="store_true", help="readable output, for debugging")
+    ap.add_argument("--host-dir", default="",
+                    help="also write an installable web-app bundle here "
+                         "(index.html + manifest + service worker + icons)")
     args = ap.parse_args()
 
     out_path = Path(args.out)
@@ -252,6 +255,27 @@ def main() -> int:
     html = f'<!doctype html>\n<html lang="en">\n{html}\n</html>\n'
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # The hosted copy is cut from the template BEFORE the portable one, while
+    # the PWA slot is still open. Doing it the other way round replaced the
+    # slot with "" and then had nothing left to inject — the bundle shipped
+    # with no manifest link and looked fine until you tried to install it.
+    if args.host_dir:
+        host_dir = Path(args.host_dir)
+        if not host_dir.is_absolute():
+            host_dir = paths.ROOT / host_dir
+        theme = (trip or {}).get("trip", {}).get("theme", "light")
+        hosted = html.replace("{{PWA_HEAD}}", pwa.head_tags(name, theme))
+        hosted = (hosted.replace("</body>", pwa.REGISTER + "\n</body>")
+                  if "</body>" in hosted else hosted + pwa.REGISTER)
+        written = pwa.write(host_dir, hosted, name, theme, build_id)
+        rel_host = (host_dir.relative_to(paths.ROOT)
+                    if host_dir.is_relative_to(paths.ROOT) else host_dir)
+        print(f"  hosted:{rel_host}/ — {', '.join(written)}")
+
+    # The portable file carries no manifest link: it would point at a sibling
+    # that is not there, in the one artifact whose promise is self-containment.
+    html = html.replace("{{PWA_HEAD}}", "")
     out_path.write_text(html, encoding="utf-8")
 
     kb = len(html.encode("utf-8")) / 1024

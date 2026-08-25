@@ -74,6 +74,12 @@ forwarded to friends is a published key. Every widget caches its last success
 and shows it with a "last updated" stamp when offline; a first run with no
 network shows an explicit "not yet available", never a blank or a spinner.
 
+**Two outputs, one app (§8).** `make build` is the self-contained file; `make
+host` additionally writes `trips/<slug>/hosted/` for installing as a PWA. The
+manifest link and service-worker registration exist **only** in the hosted
+copy — putting them in `jugni.html` points it at siblings that are not there.
+See [docs/hosting-and-pwa.md](docs/hosting-and-pwa.md).
+
 **Privacy (§4, §6).** `raw/` and `trips/` hold real PII — names, emails, GPS
 coordinates, confirmation numbers. Both are gitignored by default, not opt-in.
 Never paste their contents into a commit message, a doc, or a shared artifact.

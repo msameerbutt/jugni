@@ -8,6 +8,7 @@ the output.
 """
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -107,6 +108,43 @@ def main() -> int:
 
     if "<html" not in html.lower() or "id=\"app\"" not in html:
         failures.append("output is missing the html shell or the #app mount point")
+
+    # --- 3b. the hosted bundle, when this file is one ---
+    # `make host` writes index.html beside a manifest, a service worker and
+    # icons. Any of those going missing or malformed shows up as "it just does
+    # not install", with no error anywhere — so check them here rather than
+    # discovering it on a phone.
+    host = path.parent
+    manifest_path = host / "manifest.webmanifest"
+    if path.name == "index.html" and manifest_path.exists():
+        try:
+            man = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            failures.append(f"manifest.webmanifest is not valid JSON — {exc}")
+            man = None
+        if man is not None:
+            missing = [k for k in ("name", "start_url", "display", "icons",
+                                   "background_color", "theme_color") if not man.get(k)]
+            if missing:
+                failures.append(f"manifest is missing: {missing}")
+            elif man.get("display") != "standalone":
+                failures.append(f"manifest display is {man['display']!r}, not 'standalone' "
+                                f"— it will open in a browser tab, not as an app")
+            elif not any(i.get("purpose") == "maskable" for i in man["icons"]):
+                failures.append("manifest has no maskable icon — Android will crop the mark")
+            elif not any(str(i.get("type", "")).endswith("png") for i in man["icons"]):
+                failures.append("manifest has no PNG icon — iOS falls back to a screenshot")
+            else:
+                gone = [i["src"] for i in man["icons"] if not (host / i["src"]).exists()]
+                if gone:
+                    failures.append(f"manifest points at missing icon(s): {gone}")
+                elif not (host / "sw.js").exists():
+                    failures.append("hosted bundle has a manifest but no sw.js — not offline-capable")
+                elif 'rel="manifest"' not in html:
+                    failures.append("hosted index.html does not link its manifest")
+                else:
+                    print(f"  ok    installable: manifest, service worker and "
+                          f"{len(man['icons'])} icon entries all resolve")
 
     # --- 4. does it actually run? ---
     smoke = subprocess.run(
