@@ -8,7 +8,7 @@ IDs, ISO-8601 datetimes carrying a real UTC offset, confirmed-vs-candidate).
 
 import re
 
-SCHEMA_VERSION = "1.4"
+SCHEMA_VERSION = "1.5"
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?([+-]\d{2}:\d{2}|Z)$")
@@ -20,6 +20,9 @@ TRAVELER_ROLES = {"primary", "companion"}
 LOG_TYPES = {"task", "expense", "note"}
 LOG_RELATED = {"checklist", "expense", "stay", "transport", "extra"}
 DISPLAY_HINTS = {"list", "table", "text", "link", "auto"}
+# 1.5: which panel on the destination page an extra belongs in. "note" is the
+# catch-all the page has always shown under "Worth knowing".
+EXTRA_KINDS = {"food", "free", "nightlife", "event", "note"}
 
 # field -> (required, kind). kind drives the format checks below.
 COLLECTIONS = {
@@ -90,6 +93,13 @@ COLLECTIONS = {
     "extras": {
         "id": (True, "str"), "cityId": (False, "ref:cities"), "title": (True, "str"),
         "displayHint": (False, "hint"), "content": (False, "str"),
+        # 1.5: destination content the traveller actually opens the app for.
+        # A phone on a street corner wants "where do I eat" and "what is on
+        # tonight", not one undifferentiated pile of notes.
+        "kind": (False, "extrakind"),
+        # Only for kind="event": when it is on, so the page can show what
+        # overlaps the stay and highlight what falls in the current week.
+        "startDate": (False, "date"), "endDate": (False, "date"),
         # 1.1: an extra with nowhere to go is a dead end. Links give the
         # reader something to do with the fact.
         "links": (False, "links"),
@@ -166,6 +176,8 @@ def _check_value(kind, value, ids, errors, warnings, where):
                     errors.append(f"{where}[{i}]: each link needs a url")
                 elif not str(link["url"]).startswith(("http://", "https://")):
                     errors.append(f"{where}[{i}]: '{link['url']}' is not an http(s) URL")
+    elif kind == "extrakind" and value not in EXTRA_KINDS:
+        errors.append(f"{where}: kind '{value}' not one of {sorted(EXTRA_KINDS)}")
     elif kind == "mode" and value not in TRANSPORT_MODES:
         errors.append(f"{where}: mode '{value}' not one of {sorted(TRANSPORT_MODES)}")
     elif kind == "role" and value not in TRAVELER_ROLES:

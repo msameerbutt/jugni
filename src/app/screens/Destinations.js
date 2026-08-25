@@ -9,7 +9,7 @@
 import { html } from '../lib/html.js';
 import { Icon, Flag } from '../lib/icons.js';
 import { Stat, Money, HomeMoney, Empty, Section, PageHead, Stamp, Badge,
-         Fold, FoldControls, Carousel, CopyButton } from '../ui/components.js';
+         Fold, FoldControls, CopyButton } from '../ui/components.js';
 import { TaskRow, ExpenseRow, LegLine, CityTitle, ForecastDay, Extra } from '../ui/parts.js';
 import { useAsync } from '../ui/hooks.js';
 import * as D from '../state/derive.js';
@@ -87,15 +87,23 @@ function DestinationDetail({ state, cityId }) {
   const openTasks = tasks.filter((t) => !t.done);
   const lateTasks = D.overdue(state).filter((t) => t.cityId === city.id);
   const spend = state.expenses.filter((e) => e.cityId === city.id);
-  const notes = state.destinationNotes.filter((n) => n.cityId === city.id);
-  const extras = state.extras.filter((x) => x.cityId === city.id);
+  const { facts, longer } = D.splitNotes(state, city.id);
+  const notes = longer;
+  const extras = D.extrasOfKind(state, city.id, 'note');
+  const guide = {
+    food: D.extrasOfKind(state, city.id, 'food'),
+    free: D.extrasOfKind(state, city.id, 'free'),
+    nightlife: D.extrasOfKind(state, city.id, 'nightlife'),
+  };
+  const events = D.eventsForCity(state, city, today);
   const stayCost = D.stayCostInCity(state, city.id);
   const missingPrices = D.bookingsMissingPrice(state, city.id);
   const home = state.trip.homeCurrency;
 
   const liveDeadline = stays.some((x) => x.cancellationDeadline && day(x.cancellationDeadline) >= today);
 
-  const foldIds = ['stay', 'transport', 'tasks', 'guide', 'extras', 'spending']
+  const foldIds = ['stay', 'transport', 'tasks', 'guide', 'extras', 'spending',
+                   'food', 'free', 'nightlife', 'events']
     .map((k) => `city.${city.id}.${k}`);
 
   return html`
@@ -118,6 +126,7 @@ function DestinationDetail({ state, cityId }) {
                  note=${stayCost ? 'stay billed separately' : ''} />
       </div>
       ${city.notes && html`<p class="small muted" style="margin-top:var(--space-4)">${city.notes}</p>`}
+      <${QuickFacts} notes=${facts} cityId=${city.id} />
       <${CountryFacts} city=${city} />
       <${LocalForecast} city=${city} />
     </section>
@@ -155,11 +164,39 @@ function DestinationDetail({ state, cityId }) {
           : html`<p class="small muted">Nothing tied to ${city.name} yet.</p>`}
       <//>
 
+      ${events.length > 0 && html`
+        <${Fold} id=${foldIds[9]} title="On while you're here" icon="sparkles"
+                 count=${events.length} defaultOpen=${isNow}>
+          <div class="rows">
+            ${events.map((e) => html`<${EventRow} key=${e.id} event=${e} />`)}
+          </div>
+        <//>`}
+
+      ${guide.food.length > 0 && html`
+        <${Fold} id=${foldIds[6]} title="Best food" icon="utensils" count=${guide.food.length}>
+          <div class="grid grid--2">
+            ${guide.food.map((x) => html`<${Extra} key=${x.id} extra=${x} />`)}
+          </div>
+        <//>`}
+
+      ${guide.free.length > 0 && html`
+        <${Fold} id=${foldIds[7]} title="Free things" icon="sparkles" count=${guide.free.length}>
+          <div class="grid grid--2">
+            ${guide.free.map((x) => html`<${Extra} key=${x.id} extra=${x} />`)}
+          </div>
+        <//>`}
+
+      ${guide.nightlife.length > 0 && html`
+        <${Fold} id=${foldIds[8]} title="After dark" icon="moon" count=${guide.nightlife.length}>
+          <div class="grid grid--2">
+            ${guide.nightlife.map((x) => html`<${Extra} key=${x.id} extra=${x} />`)}
+          </div>
+        <//>`}
+
+      ${notes.length > 0 && html`
       <${Fold} id=${foldIds[3]} title="Good to know" icon="info" count=${notes.length}
                defaultOpen=${isNow && !isTravelDay}>
-        ${notes.length
-          ? html`
-            <${Carousel} label=${`Notes about ${city.name}`}>
+        <div class="grid grid--2">
               ${notes.map((n) => html`
                 <article class="card notecard" key=${n.id}>
                   <div class="widget__head">
@@ -171,23 +208,14 @@ function DestinationDetail({ state, cityId }) {
                   </div>
                   <p class="note-body small">${n.body}</p>
                 </article>`)}
-            <//>
-            <div class="hide-readonly" style="margin-top:var(--space-2)">
-              <button class="btn btn--ghost" onClick=${() => A.addNote(city.id)}>
-                <${Icon} name="plus" /> Add a note
-              </button>
-            </div>`
-          : html`<${Empty} icon="info" title=${`Nothing noted for ${city.name} yet`}
-                   body="Emergency numbers, plug type, transit quirks.">
-              <button class="btn hide-readonly" onClick=${() => A.addNote(city.id)}>Add a note</button>
-            <//>`}
-      <//>
+        </div>
+      <//>`}
 
       ${extras.length > 0 && html`
         <${Fold} id=${foldIds[4]} title="Worth knowing" icon="sparkles" count=${extras.length}>
-          <${Carousel} label=${`Worth knowing in ${city.name}`}>
+          <div class="grid grid--2">
             ${extras.map((x) => html`<${Extra} key=${x.id} extra=${x} />`)}
-          <//>
+          </div>
         <//>`}
 
       ${spend.length > 0 && html`
@@ -340,5 +368,60 @@ export function MissingPrices({ items, state, inline }) {
             </div>
           </div>`)}
       </div>
+    </div>`;
+}
+
+/* The short facts, as a strip.
+
+   Emergency numbers, plug type, tipping: a label and a value each, 25 to 40
+   characters. Rendered as cards in a carousel they cost most of a phone
+   screen to say "Type C, 230V", and the one you wanted was two swipes away.
+   Here they are all visible at once, which is the whole job. */
+function QuickFacts({ notes, cityId }) {
+  return html`<div>
+    <dl class="qfacts">
+      ${notes.map((n) => html`
+        <div class="qfact" key=${n.id}>
+          <dt class="qfact__k">${n.title}</dt>
+          <dd class="qfact__v">${n.body}</dd>
+        </div>`)}
+    </dl>
+    <div class="hide-readonly" style="margin-top:var(--space-3)">
+      <button class="btn btn--ghost" onClick=${() => A.addNote(cityId)}>
+        <${Icon} name="plus" /> Add a fact
+      </button>
+    </div>
+  </div>`;
+}
+
+/* One thing that is on. `thisWeek` and `onNow` come from the real date, so a
+   file opened in the middle of the trip leads with what is happening rather
+   than with the alphabet. */
+function EventRow({ event }) {
+  /* No dates means either a standing fixture or a programme that is not out
+     yet. Both are honest as a blank; "all the time" claims one of them. */
+  const when = event.startDate
+    ? fmtRange(event.startDate, event.endDate || event.startDate)
+    : '';
+  const links = Array.isArray(event.links) ? event.links : [];
+  return html`
+    <div class=${`row ${event.onNow ? 'row--now' : ''}`}>
+      <${Icon} name=${event.onNow ? 'sparkles' : 'calendar-days'} />
+      <div class="row__body">
+        <div class="row__title">
+          ${event.title}
+          ${event.onNow ? html` <${Badge} kind="now">on now<//>`
+            : event.thisWeek ? html` <${Badge}>this week<//>` : ''}
+        </div>
+        ${event.content && html`<p class="small muted note-body">${event.content}</p>`}
+        ${links.length > 0 && html`
+          <div class="linkrow" style="margin-top:var(--space-2)">
+            ${links.map((l, i) => html`
+              <a class="btn btn--ghost" key=${i} href=${l.url} target="_blank" rel="noopener noreferrer">
+                <${Icon} name="external-link" /> ${l.label || 'Open'}
+              </a>`)}
+          </div>`}
+      </div>
+      ${when && html`<span class="row__side"><span class="tkt small muted">${when}</span></span>`}
     </div>`;
 }

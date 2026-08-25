@@ -147,11 +147,13 @@ export function LegLine({ leg, boxed }) {
           <${Badge}>ref ${leg.bookingRef}<//>
           <${CopyButton} value=${leg.bookingRef} label=${`booking reference ${leg.bookingRef}`} />
         </span>`}
-      ${leg.cost > 0 && html`
-        <${HomeMoney} amount=${leg.cost} currency=${leg.currency}
+      ${leg.cost > 0
+        ? html`<${HomeMoney} amount=${leg.cost} currency=${leg.currency}
                       home=${getState().trip.homeCurrency}
                       snapshotHome=${leg.homeAmount}
-                      hints=${getState().trip.rateHints} class="leg__time" />`}
+                      hints=${getState().trip.rateHints} class="leg__time" />`
+        : (D.isPriced(leg) || D.coveredByBooking(getState(), leg)) && html`
+            <span class="leg__time faint">included</span>`}
     </div>`;
   return boxed ? html`<div class="card card--flat" style="margin-bottom:var(--space-2)">${inner}</div>` : inner;
 }

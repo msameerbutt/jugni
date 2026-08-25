@@ -169,6 +169,26 @@ export const stayIsSplit = (s, stayId) =>
    prints a fare and the Oslo stay was booked by a companion. The total is
    therefore lower than what was actually paid, and the traveller should know
    that rather than trusting a number that quietly omits five flights. */
+/* Is a fare actually recorded? Zero is an answer, not a blank.
+
+   One ticket covering four flights has one fare, and the traveller's way of
+   saying so is to put the total on one leg and zero on the rest. Treating 0 as
+   "not filled in" made that impossible: the leg kept asking for a price it had
+   already been told. Only an absent value is unknown. */
+export const isPriced = (rec) => {
+  const v = rec?.cost;
+  return v !== null && v !== undefined && v !== '' && !Number.isNaN(Number(v));
+};
+
+/* A leg with no fare of its own, but a sibling on the same booking reference
+   that carries one. Its price is not missing — it is over there. */
+export const coveredByBooking = (s, rec) => {
+  const ref = String(rec?.bookingRef || '').trim().toLowerCase();
+  if (!ref) return false;
+  return s.transport.some((t) => t.id !== rec.id && isPriced(t) && Number(t.cost) > 0
+    && String(t.bookingRef || '').trim().toLowerCase() === ref);
+};
+
 export function bookingsMissingPrice(s, cityId) {
   const out = [];
 
@@ -178,13 +198,9 @@ export function bookingsMissingPrice(s, cityId) {
      for, and listing them as "no price recorded" states the opposite of what
      the screen above it says. A leg with no reference at all is judged on its
      own, which is what keeps a genuinely unpriced ticket visible. */
-  const pricedRefs = new Set(
-    s.transport.filter((t) => Number(t.cost) > 0 && t.bookingRef)
-      .map((t) => String(t.bookingRef).trim().toLowerCase()));
-
   for (const t of s.transport) {
-    if (Number(t.cost) > 0) continue;
-    if (t.bookingRef && pricedRefs.has(String(t.bookingRef).trim().toLowerCase())) continue;
+    if (isPriced(t)) continue;
+    if (coveredByBooking(s, t)) continue;
     out.push({
       kind: 'transport', id: t.id, ref: t.bookingRef || '',
       label: `${t.from || '?'} → ${t.to || '?'}`,
@@ -193,7 +209,7 @@ export function bookingsMissingPrice(s, cityId) {
     });
   }
   for (const x of s.stays) {
-    if (Number(x.cost) > 0) continue;
+    if (isPriced(x)) continue;
     /* Neither a fare nor a confirmation number means this was never a booking:
        it is a spare room at a relative's, recorded so the address is in the
        app at midnight in an arrivals hall. Chasing it for a missing price
@@ -329,4 +345,58 @@ export function tripDays(s, iso = todayISO()) {
       isPast: date < today,
     };
   });
+}
+
+/* ---------- Destination content (schema 1.5) ----------
+
+   What a phone gets opened for on a street corner: where to eat, what is free,
+   what is on tonight. These are `extras` carrying a `kind`, so the destination
+   page can show them as their own panels instead of one undifferentiated pile
+   under "Worth knowing". */
+export const extrasOfKind = (s, cityId, kind) =>
+  s.extras.filter((x) => x.cityId === cityId && (x.kind || 'note') === kind);
+
+/* Events, narrowed to the stay and ordered by when they start.
+
+   An event with no dates is a standing fixture — a weekly market, a nightly
+   view — and always shows. A dated one only shows if it actually overlaps the
+   nights the traveller is there, because "what's on in Berlin" is useless
+   noise on a page for a trip that has already left. */
+export function eventsForCity(s, city, iso = todayISO()) {
+  if (!city) return [];
+  const from = day(city.arriveDate);
+  const to = day(city.departDate || city.arriveDate);
+  const today = day(iso);
+  const weekEnd = addDays(today, 7);
+
+  return sortBy(extrasOfKind(s, city.id, 'event').filter((x) => {
+    if (!x.startDate && !x.endDate) return true;
+    const a = day(x.startDate || x.endDate);
+    const b = day(x.endDate || x.startDate);
+    return !(b < from || a > to);            // any overlap with the stay
+  }), (x) => x.startDate || '').map((x) => {
+    const a = day(x.startDate || '');
+    const b = day(x.endDate || x.startDate || '');
+    return {
+      ...x,
+      /* "This week" is measured from the real today, so the badge means what
+         it says whichever day the file is opened. */
+      thisWeek: !!(a && a <= day(weekEnd) && (b || a) >= today),
+      onNow: !!(a && a <= today && (b || a) >= today),
+    };
+  });
+}
+
+/* Short facts belong in a strip, not in cards.
+
+   A 25-character note about plug sockets rendered as a full card in a carousel
+   wastes most of a phone screen to say "Type C, 230V". Anything this short is
+   a label and a value; anything longer is prose and keeps its card. */
+export const SHORT_NOTE_CHARS = 90;
+export function splitNotes(s, cityId) {
+  const all = s.destinationNotes.filter((n) => n.cityId === cityId);
+  return {
+    facts: all.filter((n) => (n.body || '').length <= SHORT_NOTE_CHARS),
+    longer: all.filter((n) => (n.body || '').length > SHORT_NOTE_CHARS),
+  };
 }

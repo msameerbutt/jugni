@@ -1,0 +1,1837 @@
+{
+  "trip": {
+    "schemaVersion": "1.5",
+    "name": "Sample Trip 2026",
+    "startDate": "2026-09-09",
+    "endDate": "2026-09-30",
+    "homeCurrency": "AUD",
+    "budget": 2282,
+    "notes": "A worked example, not a real trip: eleven stops from Melbourne to Prague over three weeks, with flights, stays, a checklist, expenses and a full destination guide. Every name, address, booking reference and phone number is invented. Use it to see what a finished Jugni looks like before building your own.",
+    "theme": "dark",
+    "rateHints": {
+      "EUR": 1.62795,
+      "DKK": 0.21918,
+      "SEK": 0.14733
+    },
+    "rateHintsDate": "2026-08-24",
+    "rateHintsSource": "Implied by the home-currency equivalents printed on the Booking.com confirmations - Kiruna and Abisko for SEK, Eurohostel Helsinki for EUR, Copenhagen for DKK. Approximate, and only used when a live rate is unavailable."
+  },
+  "travelers": [
+    {
+      "id": "trav_alex",
+      "role": "primary",
+      "personaProfiles": [
+        "budget-backpacker",
+        "adventure-outdoor",
+        "nightlife-focused"
+      ],
+      "nickname": "alex",
+      "email": "alex@example.com",
+      "age": 0
+    },
+    {
+      "id": "trav_robin",
+      "role": "companion",
+      "personaProfiles": [],
+      "nickname": "Robin",
+      "email": "",
+      "age": 0
+    },
+    {
+      "id": "trav_jamie",
+      "role": "companion",
+      "personaProfiles": [],
+      "nickname": "Jamie",
+      "email": "",
+      "age": 0
+    },
+    {
+      "id": "trav_priya",
+      "role": "companion",
+      "personaProfiles": [],
+      "nickname": "Priya",
+      "email": "",
+      "age": 0
+    },
+    {
+      "id": "trav_chris",
+      "role": "companion",
+      "personaProfiles": [],
+      "nickname": "Chris",
+      "email": "",
+      "age": 0
+    }
+  ],
+  "cities": [
+    {
+      "id": "city_istanbul",
+      "name": "Istanbul",
+      "country": "Turkey",
+      "lat": 41.0,
+      "lon": 29.0,
+      "arriveDate": "2026-09-10",
+      "departDate": "2026-09-11",
+      "notes": "20-hour stopover between XX105 and XX106. One night at Lina Apart, with a booked transfer back to the airport.",
+      "countryCode": "tr"
+    },
+    {
+      "id": "city_berlin",
+      "name": "Berlin",
+      "country": "Germany",
+      "lat": 52.5,
+      "lon": 13.4,
+      "arriveDate": "2026-09-11",
+      "departDate": "2026-09-13",
+      "notes": "",
+      "countryCode": "de"
+    },
+    {
+      "id": "city_copenhagen",
+      "name": "Copenhagen",
+      "country": "Denmark",
+      "lat": 55.7,
+      "lon": 12.6,
+      "arriveDate": "2026-09-13",
+      "departDate": "2026-09-15",
+      "notes": "",
+      "countryCode": "dk"
+    },
+    {
+      "id": "city_oslo",
+      "name": "Oslo",
+      "country": "Norway",
+      "lat": 59.9,
+      "lon": 10.8,
+      "arriveDate": "2026-09-15",
+      "departDate": "2026-09-17",
+      "notes": "Flam scenic day trip planned from here - option not yet confirmed.",
+      "countryCode": "no"
+    },
+    {
+      "id": "city_kiruna",
+      "name": "Kiruna / Abisko",
+      "country": "Sweden",
+      "lat": 67.9,
+      "lon": 20.2,
+      "arriveDate": "2026-09-17",
+      "departDate": "2026-09-20",
+      "notes": "Aurora season opens around now. One night in Kiruna, then two at the Abisko Turiststation.",
+      "countryCode": "se"
+    },
+    {
+      "id": "city_helsinki",
+      "name": "Helsinki",
+      "country": "Finland",
+      "lat": 60.2,
+      "lon": 24.9,
+      "arriveDate": "2026-09-20",
+      "departDate": "2026-09-22",
+      "notes": "Arrive 23:50 on the 20th. Eurohostel is booked for your nights.",
+      "countryCode": "fi"
+    },
+    {
+      "id": "city_tallinn",
+      "name": "Tallinn",
+      "country": "Estonia",
+      "lat": 59.4,
+      "lon": 24.8,
+      "arriveDate": "2026-09-22",
+      "departDate": "2026-09-22",
+      "notes": "Same-day transit: ferry over in the morning, Wizz Air to Budapest at 15:25.",
+      "countryCode": "ee"
+    },
+    {
+      "id": "city_budapest",
+      "name": "Budapest",
+      "country": "Hungary",
+      "lat": 47.5,
+      "lon": 19.1,
+      "arriveDate": "2026-09-22",
+      "departDate": "2026-09-26",
+      "notes": "Two road-trip days planned from here.",
+      "countryCode": "hu"
+    },
+    {
+      "id": "city_bratislava",
+      "name": "Bratislava",
+      "country": "Slovakia",
+      "lat": 48.1,
+      "lon": 17.1,
+      "arriveDate": "2026-09-26",
+      "departDate": "2026-09-26",
+      "notes": "Stop on the way from Budapest to Vienna. No overnight.",
+      "countryCode": "sk"
+    },
+    {
+      "id": "city_vienna",
+      "name": "Vienna",
+      "country": "Austria",
+      "lat": 48.2,
+      "lon": 16.4,
+      "arriveDate": "2026-09-26",
+      "departDate": "2026-09-27",
+      "notes": "One night only, on the way from Bratislava to Prague.",
+      "countryCode": "at"
+    },
+    {
+      "id": "city_prague",
+      "name": "Prague",
+      "country": "Czech Republic",
+      "lat": 50.1,
+      "lon": 14.4,
+      "arriveDate": "2026-09-27",
+      "departDate": "2026-09-29",
+      "notes": "Last stop. Early start on the 29th for the flight home.",
+      "countryCode": "cz"
+    }
+  ],
+  "transport": [
+    {
+      "id": "trn_mel_ist",
+      "mode": "flight",
+      "from": "Melbourne (MEL)",
+      "to": "Istanbul (IST)",
+      "departDateTime": "2026-09-09T21:35:00+10:00",
+      "arriveDateTime": "2026-09-10T11:40:00+03:00",
+      "bookingRef": "AB1CD2",
+      "notes": "Turkish Airlines XX105",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_ist_ber",
+      "mode": "flight",
+      "from": "Istanbul (IST)",
+      "to": "Berlin (BER)",
+      "departDateTime": "2026-09-11T07:30:00+03:00",
+      "arriveDateTime": "2026-09-11T09:15:00+02:00",
+      "bookingRef": "AB1CD2",
+      "notes": "Turkish Airlines XX106. 20h stopover in Istanbul before this leg",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_ber_cph",
+      "mode": "flight",
+      "from": "Berlin Brandenburg (BER) T1",
+      "to": "Copenhagen Kastrup (CPH) T3",
+      "departDateTime": "2026-09-13T15:20:00+02:00",
+      "arriveDateTime": "2026-09-13T16:20:00+02:00",
+      "bookingRef": "EF3GH4",
+      "cost": 677.9,
+      "currency": "EUR",
+      "notes": "Norwegian D8 3301. Cost is the GROUP total for all 5 passengers, not your share",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_cph_osl",
+      "mode": "flight",
+      "from": "Copenhagen Kastrup (CPH) T2",
+      "to": "Oslo Gardermoen (OSL)",
+      "departDateTime": "2026-09-15T14:20:00+02:00",
+      "arriveDateTime": "2026-09-15T15:30:00+02:00",
+      "bookingRef": "IJ5KL6",
+      "notes": "Norwegian D83228. E-ticket 328 2405910130. 1 checked bag",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_osl_krn",
+      "mode": "flight",
+      "from": "Oslo (OSL)",
+      "to": "Kiruna (KRN)",
+      "departDateTime": "2026-09-17T16:55:00+02:00",
+      "arriveDateTime": "2026-09-17T20:35:00+02:00",
+      "bookingRef": "MN7PQ8",
+      "cost": 281,
+      "currency": "AUD",
+      "notes": "SAS SK884 then SK1044, 1h05 transfer at Stockholm Arlanda T5, bags checked through",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_krn_hel",
+      "mode": "flight",
+      "from": "Kiruna (KRN)",
+      "to": "Helsinki (HEL)",
+      "departDateTime": "2026-09-20T18:05:00+02:00",
+      "arriveDateTime": "2026-09-20T23:50:00+03:00",
+      "bookingRef": "QR9ST0",
+      "cost": 129,
+      "currency": "AUD",
+      "notes": "SAS SK1047 then SK728, 2h15 transfer at Stockholm Arlanda T5. Lands late - plan the arrival",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_tll_bud",
+      "mode": "flight",
+      "from": "Tallinn (TLL)",
+      "to": "Budapest (BUD) T2",
+      "departDateTime": "2026-09-22T15:25:00+03:00",
+      "arriveDateTime": "2026-09-22T16:45:00+02:00",
+      "bookingRef": "UV1WX2",
+      "cost": 103,
+      "currency": "AUD",
+      "notes": "Wizz Air XX201, 20kg checked",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_prg_ist",
+      "mode": "flight",
+      "from": "Prague (PRG)",
+      "to": "Istanbul (IST)",
+      "departDateTime": "2026-09-29T09:15:00+02:00",
+      "arriveDateTime": "2026-09-29T13:00:00+03:00",
+      "bookingRef": "AB1CD2",
+      "notes": "Turkish Airlines XX107",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_ist_mel",
+      "mode": "flight",
+      "from": "Istanbul (IST)",
+      "to": "Melbourne (MEL)",
+      "departDateTime": "2026-09-29T16:55:00+03:00",
+      "arriveDateTime": "2026-09-30T19:40:00+10:00",
+      "bookingRef": "AB1CD2",
+      "notes": "Turkish Airlines XX108, Airbus A350-900, economy (P). Prague to Melbourne is 1d 2h 25m door to door on this ticket, so you land on the morning of the 30th, not the 29th.",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_ist_transfer_a",
+      "mode": "car",
+      "from": "Lina Apart, Arnavutköy",
+      "to": "Istanbul Airport (IST)",
+      "departDateTime": "2026-09-11T05:00:00+03:00",
+      "arriveDateTime": "2026-09-11T05:10:00+03:00",
+      "bookingRef": "3000000001",
+      "notes": "Booked airport transfer for your party, about 10 minutes, ahead of the 07:30 flight to Berlin. Booked by Chris.",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_ist_transfer_b",
+      "mode": "car",
+      "from": "Lina Apart, Arnavutköy",
+      "to": "Istanbul Airport (IST)",
+      "departDateTime": "2026-09-11T07:15:00+03:00",
+      "arriveDateTime": "2026-09-11T07:25:00+03:00",
+      "bookingRef": "3000000002",
+      "notes": "Second booked transfer, for two other guests travelling later than the 07:30 to Berlin. About 10 minutes. Booked by Chris.",
+      "sourceFile": "sample-booking.pdf"
+    },
+    {
+      "id": "trn_bud_car",
+      "mode": "car",
+      "from": "Budapest Ferenc Liszt Airport",
+      "to": "Budapest Ferenc Liszt Airport",
+      "departDateTime": "2026-09-23T20:00:00+02:00",
+      "arriveDateTime": "2026-09-25T20:00:00+02:00",
+      "notes": "Hire car for the two road-trip days - Mercedes GLC or similar, 5 seats, automatic, unlimited mileage. Supplied by Klass Wagen. Main driver Chris Lee, so he needs licence, card and passport at the counter.",
+      "sourceFile": "sample-booking.pdf"
+    }
+  ],
+  "stays": [
+    {
+      "id": "stay_berlin",
+      "cityId": "city_berlin",
+      "name": "Hotel Transit Loft",
+      "address": "12 Sample Street, Berlin, Germany",
+      "checkIn": "2026-09-11T15:00:00+02:00",
+      "checkOut": "2026-09-13T12:00:00+02:00",
+      "confirmationNumber": "1000.000.001",
+      "cost": 687,
+      "currency": "AUD",
+      "cancellationDeadline": "2026-09-11T18:00:00+02:00",
+      "notes": "PIN 0000. Quintuple room, 5 adults, breakfast included. Phone +00 000 000 000. Group booking - cost is for all 5",
+      "sourceFile": "sample-booking.pdf",
+      "guests": 5
+    },
+    {
+      "id": "stay_copenhagen",
+      "cityId": "city_copenhagen",
+      "name": "Next House Copenhagen",
+      "address": "12 Sample Street, Copenhagen, Denmark",
+      "checkIn": "2026-09-13T15:00:00+02:00",
+      "checkOut": "2026-09-15T11:00:00+02:00",
+      "confirmationNumber": "1000.000.002",
+      "cost": 2628,
+      "currency": "DKK",
+      "cancellationDeadline": "2026-09-09T23:59:00+02:00",
+      "notes": "PIN 0000. 6-bed private room, 5 adults. Charged in DKK - the AUD 576 on the confirmation is only an estimate. Prepaid in the 3 days before arrival. Phone +00 000 000 000",
+      "homeAmount": 576,
+      "homeCurrency": "AUD",
+      "rateSnapshotDate": "2026-08-21",
+      "sourceFile": "sample-booking.pdf",
+      "guests": 5
+    },
+    {
+      "id": "stay_oslo",
+      "cityId": "city_oslo",
+      "name": "Bunks at Rode",
+      "address": "12 Sample Street, Oslo, Norway",
+      "checkIn": "2026-09-15T15:00:00+02:00",
+      "checkOut": "2026-09-17T11:00:00+02:00",
+      "confirmationNumber": "1000.000.010",
+      "cancellationDeadline": "2026-09-14T23:59:00+02:00",
+      "notes": "Booked by Robin. Expedia itinerary 70000000000000. Room for 5. Passport is the ONLY accepted ID at check-in. Check-in closes 01:00",
+      "sourceFile": "sample-booking.pdf",
+      "guests": 5
+    },
+    {
+      "id": "stay_budapest",
+      "cityId": "city_budapest",
+      "name": "A Golden Star Modern Luxury Apartments and Rooms",
+      "address": "12 Sample Street, Budapest, Hungary",
+      "checkIn": "2026-09-22T15:00:00+02:00",
+      "checkOut": "2026-09-26T11:00:00+02:00",
+      "confirmationNumber": "1000.000.003",
+      "cost": 781.39,
+      "currency": "AUD",
+      "cancellationDeadline": "2026-08-10T23:59:00+02:00",
+      "notes": "PIN 0000. Deluxe apartment, 5 adults, 4 nights. Check-in window 15:00-20:00 only. Free-cancellation window has already closed. Phone +00 000 000 000",
+      "sourceFile": "sample-booking.pdf",
+      "guests": 5
+    },
+    {
+      "id": "stay_vienna",
+      "cityId": "city_vienna",
+      "name": "BeFree Hostel - Self-Service",
+      "address": "12 Sample Street, Vienna, Austria",
+      "checkIn": "2026-09-26T15:00:00+02:00",
+      "checkOut": "2026-09-27T11:00:00+02:00",
+      "confirmationNumber": "1000.000.004",
+      "cost": 141.95,
+      "currency": "AUD",
+      "cancellationDeadline": "2026-09-24T23:59:00+02:00",
+      "notes": "PIN 0000. 6-bed hostel room with shared bathroom, 5 adults, 1 night. Booked by Priya. Group booking - cost is for all 5. Self-service check-in 15:00-00:00. Phone +00 000 000 000",
+      "sourceFile": "sample-booking.pdf",
+      "guests": 5
+    },
+    {
+      "id": "stay_prague",
+      "cityId": "city_prague",
+      "name": "Apartments by Jacob",
+      "address": "12 Sample Street, Prague, Czech Republic",
+      "checkIn": "2026-09-27T15:00:00+02:00",
+      "checkOut": "2026-09-29T11:00:00+02:00",
+      "confirmationNumber": "1000.000.005",
+      "cost": 557.88,
+      "currency": "AUD",
+      "cancellationDeadline": "2026-09-19T23:59:00+02:00",
+      "notes": "PIN 0000. Two-bedroom apartment, 5 adults, 2 nights. Booked by Priya. Group booking - cost is for all 5. Dates cannot be changed. Check-out desk opens 08:00, but the plan is to leave at 06:00 for the 09:15 flight - arrange the key drop before the last night. Phone +00 000 000 000",
+      "sourceFile": "sample-booking.pdf",
+      "guests": 5
+    },
+    {
+      "id": "stay_istanbul",
+      "cityId": "city_istanbul",
+      "name": "Lina Apart",
+      "address": "12 Sample Street, Istanbul, Turkey",
+      "checkIn": "2026-09-10T14:00:00+03:00",
+      "checkOut": "2026-09-11T12:00:00+03:00",
+      "confirmationNumber": "1000.000.006",
+      "cost": 73.0,
+      "currency": "AUD",
+      "cancellationDeadline": "2026-09-05T23:59:00+03:00",
+      "notes": "PIN 0000. Family room, 5 adults, one night on the stopover. Booked by Chris. Paid AUD 7.32 extra for the fully refundable option. No meal included. Phone +00 000 000 000",
+      "sourceFile": "sample-booking.pdf",
+      "guests": 5
+    },
+    {
+      "id": "stay_kiruna",
+      "cityId": "city_kiruna",
+      "name": "STF Malmfältens Folkhögskola",
+      "address": "12 Sample Street, Kiruna, Sweden",
+      "checkIn": "2026-09-17T15:00:00+02:00",
+      "checkOut": "2026-09-18T11:00:00+02:00",
+      "confirmationNumber": "1000.000.007",
+      "cost": 1595.0,
+      "currency": "SEK",
+      "homeAmount": 235.0,
+      "homeCurrency": "AUD",
+      "rateSnapshotDate": "2026-08-24",
+      "cancellationDeadline": "2026-09-15T23:59:00+02:00",
+      "notes": "PIN 0000. Economy triple, 3 adults, breakfast included. Booked by Chris. Pay at the property in SEK - nothing is charged up front. Check-in closes 19:30, so tell them if you will be later. Phone +00 000 000 000",
+      "sourceFile": "sample-booking.pdf",
+      "guests": 3
+    },
+    {
+      "id": "stay_abisko",
+      "cityId": "city_kiruna",
+      "name": "STF Abisko Turiststation",
+      "address": "12 Sample Street, Abisko, Sweden",
+      "checkIn": "2026-09-18T15:00:00+02:00",
+      "checkOut": "2026-09-20T10:00:00+02:00",
+      "confirmationNumber": "1000.000.008",
+      "cost": 3150.0,
+      "currency": "SEK",
+      "homeAmount": 464.0,
+      "homeCurrency": "AUD",
+      "rateSnapshotDate": "2026-08-24",
+      "notes": "PIN 0000. Quadruple room with shared bathroom, 3 adults, two nights. Booked by Chris. Pay at the property in SEK. Check-in closes 20:00; check-out is 07:00-10:00. This is the aurora base. Phone +00 000 000 000",
+      "sourceFile": "sample-booking.pdf",
+      "guests": 3
+    },
+    {
+      "id": "stay_helsinki",
+      "cityId": "city_helsinki",
+      "name": "Eurohostel",
+      "address": "12 Sample Street, Helsinki, Finland",
+      "checkIn": "2026-09-20T14:00:00+03:00",
+      "checkOut": "2026-09-22T12:00:00+03:00",
+      "confirmationNumber": "1000.000.009",
+      "cost": 159.71,
+      "currency": "EUR",
+      "homeAmount": 260.0,
+      "homeCurrency": "AUD",
+      "rateSnapshotDate": "2026-08-24",
+      "cancellationDeadline": "2026-09-20T18:00:00+03:00",
+      "notes": "PIN 0000. Standard triple with shared bathroom, 3 adults, two nights. Booked by Chris - this is the one that covers YOUR nights, not Robin's 19-21 booking at the same hostel. Pay at the property in EUR. Phone +00 000 000 000",
+      "sourceFile": "sample-booking.pdf",
+      "guests": 3
+    }
+  ],
+  "checklist": [
+    {
+      "id": "task_ferry",
+      "task": "Book the Helsinki to Tallinn ferry for the morning of 22 Sep - must land before the 15:25 flight",
+      "category": "booking",
+      "cityId": "city_helsinki",
+      "dueDate": "2026-09-10",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_reichstag",
+      "task": "Register online for the Reichstag glass dome - free but advance registration only",
+      "category": "booking",
+      "cityId": "city_berlin",
+      "dueDate": "2026-09-01",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_tvtower",
+      "task": "Book Berlin TV Tower and the Spree river cruise",
+      "category": "booking",
+      "cityId": "city_berlin",
+      "dueDate": "2026-09-05",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_ist_arrival",
+      "task": "Confirm the Melbourne arrival date on XX108 - the ticket shows a time but not a date",
+      "category": "transport",
+      "cityId": "",
+      "dueDate": "2026-09-01",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_passport",
+      "task": "Check passport has 6+ months validity past 29 Sep and 2 blank pages",
+      "category": "documents",
+      "cityId": "",
+      "dueDate": "2026-08-25",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_insurance",
+      "task": "Buy travel insurance covering Schengen and the Arctic leg",
+      "category": "documents",
+      "cityId": "",
+      "dueDate": "2026-08-31",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_bank",
+      "task": "Tell the bank the travel dates and check foreign transaction fees",
+      "category": "money",
+      "cityId": "",
+      "dueDate": "2026-09-05",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_esim",
+      "task": "Buy a multi-country eSIM - the route crosses 9 countries",
+      "category": "general",
+      "cityId": "",
+      "dueDate": "2026-09-07",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_pack_rain",
+      "task": "Pack a rain shell",
+      "category": "packing",
+      "cityId": "city_oslo",
+      "dueDate": "2026-09-08",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_pack_arctic",
+      "task": "Pack thermal layers, gloves and a beanie for Abisko",
+      "category": "packing",
+      "cityId": "city_kiruna",
+      "dueDate": "2026-09-08",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_pack_adapter",
+      "task": "Pack Type C/F plug adapters - everything except the UK-style outliers",
+      "category": "packing",
+      "cityId": "",
+      "dueDate": "2026-09-08",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_aurora",
+      "task": "Install an aurora forecast app before Abisko",
+      "category": "general",
+      "cityId": "city_kiruna",
+      "dueDate": "2026-09-16",
+      "done": false,
+      "completedDate": null
+    },
+    {
+      "id": "task_car_docs",
+      "task": "Check what Chris needs at the Budapest car counter",
+      "category": "documents",
+      "cityId": "city_budapest",
+      "dueDate": "2026-09-20",
+      "done": false,
+      "completedDate": null,
+      "note": "Licence, credit card in the driver's name, and usually an international permit. Missing one means no car."
+    },
+    {
+      "id": "task_nordic_cash",
+      "task": "Sort a card that works in Sweden and Finland",
+      "category": "money",
+      "cityId": "",
+      "dueDate": "2026-09-10",
+      "done": false,
+      "completedDate": null,
+      "note": "Kiruna, Abisko and Helsinki are all pay-at-the-property, roughly SEK 4,745 and EUR 160 between them."
+    }
+  ],
+  "expenses": [
+    {
+      "id": "exp_osl_krn",
+      "label": "Oslo to Kiruna flight",
+      "category": "transport",
+      "amount": 281,
+      "currency": "AUD",
+      "homeAmount": 281,
+      "homeCurrency": "AUD",
+      "rateSnapshotDate": "2026-06-30",
+      "date": "2026-06-30",
+      "cityId": "city_oslo"
+    },
+    {
+      "id": "exp_krn_hel",
+      "label": "Kiruna to Helsinki flight",
+      "category": "transport",
+      "amount": 129,
+      "currency": "AUD",
+      "homeAmount": 129,
+      "homeCurrency": "AUD",
+      "rateSnapshotDate": "2026-06-30",
+      "date": "2026-06-30",
+      "cityId": "city_kiruna"
+    },
+    {
+      "id": "exp_tll_bud",
+      "label": "Tallinn to Budapest flight",
+      "category": "transport",
+      "amount": 103,
+      "currency": "AUD",
+      "homeAmount": 103,
+      "homeCurrency": "AUD",
+      "rateSnapshotDate": "2026-07-18",
+      "date": "2026-07-18",
+      "cityId": "city_tallinn"
+    }
+  ],
+  "destinationNotes": [
+    {
+      "id": "note_001",
+      "cityId": "city_istanbul",
+      "title": "Emergency",
+      "body": "112 for all emergencies. Tourist police speak English."
+    },
+    {
+      "id": "note_002",
+      "cityId": "city_istanbul",
+      "title": "Power",
+      "body": "Type C / F sockets, 230V. Same adapter as the rest of the trip."
+    },
+    {
+      "id": "note_003",
+      "cityId": "city_istanbul",
+      "title": "Money",
+      "body": "Turkish lira (TRY). Cards widely accepted; carry small cash for ferries."
+    },
+    {
+      "id": "note_004",
+      "cityId": "city_istanbul",
+      "title": "The stopover",
+      "body": "20 hours between landing 11:40 on the 10th and departing 07:30 on the 11th. Turkish Airlines runs free TourIstanbul city tours for long layovers, and a Bosphorus cruise fits comfortably in the window."
+    },
+    {
+      "id": "note_005",
+      "cityId": "city_berlin",
+      "title": "Emergency",
+      "body": "112 ambulance and fire, 110 police."
+    },
+    {
+      "id": "note_006",
+      "cityId": "city_berlin",
+      "title": "Power",
+      "body": "Type C / F sockets, 230V."
+    },
+    {
+      "id": "note_007",
+      "cityId": "city_berlin",
+      "title": "Transit",
+      "body": "AB zones cover everything inside the ring, including BER airport on ABC. Validate paper tickets before boarding - inspectors are frequent and unmoved by tourists."
+    },
+    {
+      "id": "note_009",
+      "cityId": "city_copenhagen",
+      "title": "Emergency",
+      "body": "112 emergencies, 1813 for non-urgent medical."
+    },
+    {
+      "id": "note_010",
+      "cityId": "city_copenhagen",
+      "title": "Power",
+      "body": "Type C / K sockets, 230V. Type C plugs fit Danish sockets fine."
+    },
+    {
+      "id": "note_011",
+      "cityId": "city_copenhagen",
+      "title": "Money",
+      "body": "Danish krone (DKK). Card-first city - many places take no cash at all."
+    },
+    {
+      "id": "note_012",
+      "cityId": "city_copenhagen",
+      "title": "Bikes",
+      "body": "Bike lanes are traffic lanes, not footpaths. Signal turns, keep right, never stop in one."
+    },
+    {
+      "id": "note_013",
+      "cityId": "city_oslo",
+      "title": "Emergency",
+      "body": "113 ambulance, 110 fire, 112 police."
+    },
+    {
+      "id": "note_014",
+      "cityId": "city_oslo",
+      "title": "Power",
+      "body": "Type C / F sockets, 230V."
+    },
+    {
+      "id": "note_015",
+      "cityId": "city_oslo",
+      "title": "Money",
+      "body": "Norwegian krone (NOK). The most expensive stop - roughly double Berlin."
+    },
+    {
+      "id": "note_017",
+      "cityId": "city_kiruna",
+      "title": "Emergency",
+      "body": "112. Mobile coverage thins outside Abisko village - tell someone your route before hiking."
+    },
+    {
+      "id": "note_018",
+      "cityId": "city_kiruna",
+      "title": "Power",
+      "body": "Type C / F sockets, 230V."
+    },
+    {
+      "id": "note_020",
+      "cityId": "city_kiruna",
+      "title": "Cold",
+      "body": "5C days, near freezing at night. Thermal base layer and a windproof shell."
+    },
+    {
+      "id": "note_021",
+      "cityId": "city_helsinki",
+      "title": "Emergency",
+      "body": "112 for police, fire and ambulance."
+    },
+    {
+      "id": "note_022",
+      "cityId": "city_helsinki",
+      "title": "Power",
+      "body": "Type C / F sockets, 230V."
+    },
+    {
+      "id": "note_023",
+      "cityId": "city_helsinki",
+      "title": "Money",
+      "body": "Euro. Finland is on +03:00, an hour ahead of Sweden."
+    },
+    {
+      "id": "note_024",
+      "cityId": "city_helsinki",
+      "title": "Late arrival",
+      "body": "You land 23:50 on the 20th. The airport train runs until roughly 01:00 - check the last departure the week before, and have the accommodation address written down."
+    },
+    {
+      "id": "note_025",
+      "cityId": "city_tallinn",
+      "title": "Emergency",
+      "body": "112 for police, fire and ambulance."
+    },
+    {
+      "id": "note_026",
+      "cityId": "city_tallinn",
+      "title": "The day",
+      "body": "Ferry over in the morning, Wizz Air at 15:25 - realistically about four hours in the Old Town. Terminal D and the airport are both close to the centre. Allow 2 hours before the flight."
+    },
+    {
+      "id": "note_027",
+      "cityId": "city_tallinn",
+      "title": "Money",
+      "body": "Euro. Same timezone as Helsinki (+03:00), one hour ahead of Budapest."
+    },
+    {
+      "id": "note_028",
+      "cityId": "city_budapest",
+      "title": "Emergency",
+      "body": "112 for police, fire and ambulance."
+    },
+    {
+      "id": "note_029",
+      "cityId": "city_budapest",
+      "title": "Power",
+      "body": "Type C / F sockets, 230V."
+    },
+    {
+      "id": "note_030",
+      "cityId": "city_budapest",
+      "title": "Money",
+      "body": "Hungarian forint (HUF), not euro. Always refuse dynamic currency conversion."
+    },
+    {
+      "id": "note_031",
+      "cityId": "city_budapest",
+      "title": "Watch out",
+      "body": "Avoid unlicensed taxis at the airport - use Bolt or the official rank. Check-in at the apartment is 15:00-20:00 only, and your flight lands 16:45, so it is tight but fine."
+    },
+    {
+      "id": "note_032",
+      "cityId": "city_bratislava",
+      "title": "Emergency",
+      "body": "112 for police, fire and ambulance."
+    },
+    {
+      "id": "note_033",
+      "cityId": "city_bratislava",
+      "title": "The stop",
+      "body": "Between Budapest and Vienna, about 2.5h from Budapest and 1h from Vienna. The old town is small enough to see properly in an afternoon."
+    },
+    {
+      "id": "note_034",
+      "cityId": "city_bratislava",
+      "title": "Money",
+      "body": "Euro."
+    },
+    {
+      "id": "note_035",
+      "cityId": "city_vienna",
+      "title": "Emergency",
+      "body": "112, or 144 for ambulance directly."
+    },
+    {
+      "id": "note_036",
+      "cityId": "city_vienna",
+      "title": "Money",
+      "body": "Euro. Coffee houses charge for sitting, not for the coffee - that is the deal, not a scam."
+    },
+    {
+      "id": "note_037",
+      "cityId": "city_vienna",
+      "title": "Transit",
+      "body": "Buy a 24h or 48h pass rather than singles. Validate it once, at the start."
+    },
+    {
+      "id": "note_038",
+      "cityId": "city_prague",
+      "title": "Emergency",
+      "body": "112 for police, fire and ambulance."
+    },
+    {
+      "id": "note_039",
+      "cityId": "city_prague",
+      "title": "Money",
+      "body": "Czech koruna (CZK), not euro. Never change money on the street, and refuse dynamic currency conversion."
+    },
+    {
+      "id": "note_040",
+      "cityId": "city_prague",
+      "title": "Getting out",
+      "body": "You depart 09:15 on the 29th, so you need to be at PRG by about 06:00. Arrange the transfer before the last night, not on it."
+    },
+    {
+      "id": "note_tip_berlin",
+      "cityId": "city_berlin",
+      "title": "Tipping",
+      "body": "Round up, or 5-10% for good service."
+    },
+    {
+      "id": "note_tip_copenhagen",
+      "cityId": "city_copenhagen",
+      "title": "Tipping",
+      "body": "Service is included. No tip expected."
+    },
+    {
+      "id": "note_tip_oslo",
+      "cityId": "city_oslo",
+      "title": "Tipping",
+      "body": "Service is included. Round up if you like."
+    },
+    {
+      "id": "note_tip_kiruna",
+      "cityId": "city_kiruna",
+      "title": "Tipping",
+      "body": "Service is included. 5-10% at sit-down dinners."
+    },
+    {
+      "id": "note_clim_istanbul",
+      "cityId": "city_istanbul",
+      "title": "September weather",
+      "body": "24C high, 17C low, ~13% wet days."
+    },
+    {
+      "id": "note_clim_berlin",
+      "cityId": "city_berlin",
+      "title": "September weather",
+      "body": "20C high, 12C low, ~21% wet days."
+    },
+    {
+      "id": "note_clim_copenhagen",
+      "cityId": "city_copenhagen",
+      "title": "September weather",
+      "body": "18C high, 11C low, ~27% wet days."
+    },
+    {
+      "id": "note_clim_oslo",
+      "cityId": "city_oslo",
+      "title": "September weather",
+      "body": "15C high, 8C low, ~30% wet days."
+    },
+    {
+      "id": "note_clim_kiruna",
+      "cityId": "city_kiruna",
+      "title": "September weather",
+      "body": "8C high, 2C low, ~35% wet days."
+    },
+    {
+      "id": "note_clim_helsinki",
+      "cityId": "city_helsinki",
+      "title": "September weather",
+      "body": "15C high, 8C low, ~30% wet days."
+    },
+    {
+      "id": "note_clim_budapest",
+      "cityId": "city_budapest",
+      "title": "September weather",
+      "body": "23C high, 12C low, ~18% wet days."
+    },
+    {
+      "id": "note_clim_vienna",
+      "cityId": "city_vienna",
+      "title": "September weather",
+      "body": "21C high, 12C low, ~20% wet days."
+    },
+    {
+      "id": "note_clim_prague",
+      "cityId": "city_prague",
+      "title": "September weather",
+      "body": "19C high, 10C low, ~20% wet days."
+    },
+    {
+      "id": "note_istanbul_tipping",
+      "cityId": "city_istanbul",
+      "title": "Tipping",
+      "body": "5-10% in restaurants, round up taxis. Cash is welcome."
+    },
+    {
+      "id": "note_berlin_money",
+      "cityId": "city_berlin",
+      "title": "Money",
+      "body": "Euro. Cards are normal now, but bars and Spätis are still cash-first."
+    },
+    {
+      "id": "note_kiruna_money",
+      "cityId": "city_kiruna",
+      "title": "Money",
+      "body": "Swedish krona (SEK), not euro. Sweden is close to cashless - card everywhere."
+    },
+    {
+      "id": "note_helsinki_tipping",
+      "cityId": "city_helsinki",
+      "title": "Tipping",
+      "body": "Not expected. Service is in the price."
+    },
+    {
+      "id": "note_tallinn_power",
+      "cityId": "city_tallinn",
+      "title": "Power",
+      "body": "Type C / F sockets, 230V."
+    },
+    {
+      "id": "note_tallinn_tipping",
+      "cityId": "city_tallinn",
+      "title": "Tipping",
+      "body": "Not expected; round up if the service was good."
+    },
+    {
+      "id": "note_tallinn_september",
+      "cityId": "city_tallinn",
+      "title": "September weather",
+      "body": "15C high, 8C low, ~25% wet days."
+    },
+    {
+      "id": "note_budapest_tipping",
+      "cityId": "city_budapest",
+      "title": "Tipping",
+      "body": "10% is normal - check it is not already on the bill."
+    },
+    {
+      "id": "note_bratislava_power",
+      "cityId": "city_bratislava",
+      "title": "Power",
+      "body": "Type C / E / F sockets, 230V."
+    },
+    {
+      "id": "note_bratislava_tipping",
+      "cityId": "city_bratislava",
+      "title": "Tipping",
+      "body": "Round up, or 10% for a sit-down meal."
+    },
+    {
+      "id": "note_bratislava_september",
+      "cityId": "city_bratislava",
+      "title": "September weather",
+      "body": "22C high, 12C low, ~20% wet days."
+    },
+    {
+      "id": "note_vienna_power",
+      "cityId": "city_vienna",
+      "title": "Power",
+      "body": "Type C / F sockets, 230V."
+    },
+    {
+      "id": "note_vienna_tipping",
+      "cityId": "city_vienna",
+      "title": "Tipping",
+      "body": "5-10%, handed to the server rather than left on the table."
+    },
+    {
+      "id": "note_prague_power",
+      "cityId": "city_prague",
+      "title": "Power",
+      "body": "Type C / E sockets, 230V."
+    },
+    {
+      "id": "note_prague_tipping",
+      "cityId": "city_prague",
+      "title": "Tipping",
+      "body": "Round up, or 10%. Check the bill for a service charge first."
+    }
+  ],
+  "log": [],
+  "extras": [
+    {
+      "id": "extra_group_split",
+      "cityId": "city_helsinki",
+      "displayHint": "text",
+      "title": "The group splits 17-22 Sep",
+      "content": "Your tickets take you Oslo > Kiruna/Abisko > Helsinki > Tallinn > Budapest, and Chris has now booked the beds along it for the three of you - Kiruna, Abisko and Eurohostel Helsinki 20-22. Robin booked a different branch for the rest of the group: City Hostel Stockholm 17-19, Eurohostel Helsinki 19-21 and Premiere Classe Warsaw 21-23, all for 2 adults. Note both parties are at the Eurohostel on overlapping but different dates. Everyone reconverges at the Budapest apartment on the 22nd.",
+      "kind": "note"
+    },
+    {
+      "id": "extra_warsaw_options",
+      "cityId": "",
+      "displayHint": "list",
+      "title": "Warsaw: considered, not booked",
+      "content": "Premiere Classe Warsaw Airport - later booked by Robin for his branch\nSleep & Fly Warszawa\nHotel Gordon\nAll three were booking.com searches for 21-23 Sep. You fly Tallinn to Budapest on the 22nd, so Warsaw is not on your route.",
+      "links": [
+        {
+          "label": "Booking.com search",
+          "url": "https://www.booking.com/"
+        }
+      ],
+      "kind": "note"
+    },
+    {
+      "id": "extra_flam",
+      "cityId": "city_oslo",
+      "displayHint": "list",
+      "title": "Oslo to Flam day trip - plan, not booked",
+      "content": "06:00 depart Oslo, west on the E16\n10:30 Laerdal Tunnel, 24.5 km, the longest road tunnel in the world\n11:00 Stegastein viewpoint over the Aurlandsfjord\n12:00 arrive Flam - lunch and the harbour\n13:30-15:35 Flam Railway to Myrdal and back, past the Kjosfossen waterfall\n15:45 drive back\n20:30-21:30 back in Oslo\nAbout 630 km and 14-15 hours all up. Car hire or the Bergen railway - not yet decided or booked.",
+      "links": [
+        {
+          "label": "Flåm Railway timetable",
+          "url": "https://www.visitflam.com/en/flamsbana/"
+        },
+        {
+          "label": "Stegastein viewpoint",
+          "url": "https://www.visitnorway.com/listings/stegastein/191449/"
+        }
+      ],
+      "kind": "note"
+    },
+    {
+      "id": "extra_berlin_sights",
+      "cityId": "city_berlin",
+      "displayHint": "list",
+      "title": "Worth paying for",
+      "content": "Berlin TV Tower - observation deck, book online\nSpree river cruise - the cheap way to see the government quarter\nReichstag dome is free but the registration is the ticket",
+      "links": [
+        {
+          "label": "Reichstag dome registration",
+          "url": "https://www.bundestag.de/en/visittheBundestag/dome"
+        }
+      ],
+      "kind": "note"
+    },
+    {
+      "id": "extra_budapest_locked",
+      "cityId": "city_budapest",
+      "displayHint": "text",
+      "title": "Budapest apartment is now non-refundable",
+      "content": "Free cancellation ran until 10 August 2026 23:59 property local time. That has passed, so the EUR 442 cancellation charge now applies. Booking.com paid AUD 70.67 of this booking, so a property invoice will not show that part.",
+      "kind": "note"
+    },
+    {
+      "id": "extra_ferry_options",
+      "cityId": "city_helsinki",
+      "displayHint": "text",
+      "title": "Helsinki to Tallinn ferry - two conflicting plans, neither booked",
+      "content": "One version of the spreadsheet says 07:30 arriving 09:30; another says 10:30 arriving 12:30. Your Wizz Air flight leaves Tallinn at 15:25, so the earlier sailing leaves a sensible buffer and the later one does not leave much. Nothing is booked either way - Tallink and Viking Line both run the route roughly every two hours.",
+      "links": [
+        {
+          "label": "Tallink Silja",
+          "url": "https://www.tallink.com/"
+        },
+        {
+          "label": "Viking Line",
+          "url": "https://www.vikingline.com/"
+        }
+      ],
+      "kind": "note"
+    },
+    {
+      "id": "extra_food_berlin",
+      "cityId": "city_berlin",
+      "title": "What to eat",
+      "displayHint": "table",
+      "content": "Bratwurst: grilled sausage with mustard and a fresh roll\nPretzel (Brezel): soft baked, crisp crust, good with butter or beer\nCurrywurst: sliced sausage, curry ketchup, fries\nSchnitzel: crisp breaded cutlet with potatoes or salad\nBlack Forest cake: chocolate sponge, cherries, cream",
+      "kind": "food"
+    },
+    {
+      "id": "extra_food_copenhagen",
+      "cityId": "city_copenhagen",
+      "title": "What to eat",
+      "displayHint": "table",
+      "content": "Smorrebrod: open-faced rye sandwiches with fish, meat or cheese\nFrikadeller: pork meatballs with potatoes and gravy\nWienerbrod: the actual Danish pastry\nPickled herring: on rye, with onion and dill\nRodgrod med flode: summer berry dessert with cream",
+      "kind": "food"
+    },
+    {
+      "id": "extra_food_oslo",
+      "cityId": "city_oslo",
+      "title": "What to eat",
+      "displayHint": "table",
+      "content": "Atlantic salmon: grilled or smoked, and worth it here\nFjord trout: milder than salmon\nBrunost: sweet caramel-like brown cheese, on bread or waffles\nReindeer steak: northern speciality, rich\nNorwegian waffles: heart-shaped, with jam and sour cream",
+      "kind": "food"
+    },
+    {
+      "id": "extra_food_kiruna",
+      "cityId": "city_kiruna",
+      "title": "What to eat",
+      "displayHint": "table",
+      "content": "Swedish meatballs: cream gravy, mash, lingonberry\nGravlax: dill-cured salmon on rye\nKanelbulle: the cinnamon bun that fika is built around\nPrincess cake: sponge, cream, green marzipan\nToast Skagen: prawns, mayonnaise, dill, lemon",
+      "kind": "food"
+    },
+    {
+      "id": "extra_wizz_companions",
+      "cityId": "city_tallinn",
+      "displayHint": "list",
+      "title": "Chris and Priya on your flight",
+      "content": "Booking reference: YZ3AB4\nCustomer reference: 40-0000000000\nPIN 0000\nFlight: Wizz Air XX201, Tallinn to Budapest, 22 Sep 15:25-16:45\nTravellers: Chris Lee, Priya Raman\nSeats: 8F and 7F\nBags: 2 checked at 20 kg, 2 personal items, no carry-on\nPaid: AUD 290.56 for the two",
+      "kind": "note"
+    },
+    {
+      "id": "extra_pay_at_property",
+      "cityId": "",
+      "displayHint": "list",
+      "title": "Pay on arrival, in local currency",
+      "content": "Kiruna - SEK 1,595 at the desk, breakfast included\nAbisko - SEK 3,150 at the desk\nHelsinki Eurohostel - EUR 159.71 at the desk\nNone of these three are prepaid, so carry a card that works in Sweden and Finland. The AUD figures in the app are estimates at the 24 August rate, not what you will be charged.",
+      "kind": "note"
+    },
+    {
+      "id": "extra_ist_transfers",
+      "cityId": "city_istanbul",
+      "displayHint": "list",
+      "title": "Two transfers, two parties",
+      "content": "05:00 - ref 3000000001 - your car, ahead of XX106 at 07:30\n07:15 - ref 3000000002 - two other guests, on a later flight\nBoth run Lina Apart to Istanbul Airport, about 10 minutes. The second one is not a duplicate and is not a mistake.",
+      "kind": "note"
+    },
+    {
+      "id": "x_ist_food",
+      "cityId": "city_istanbul",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "list",
+      "content": "Balık ekmek - grilled fish in bread - from the boats at Eminönü, eaten standing\nSimit from any cart: the cheapest thing you will eat on this whole trip\nA proper kahvaltı spread is a two-hour breakfast, so do it on the 10th, not the 11th\nKaraköy for baklava; ask for şöbiyet if you want the one locals order\nLina Apart is out by the airport - eat in the city before you head back",
+      "links": [
+        {
+          "label": "Istanbul on Wikivoyage",
+          "url": "https://en.wikivoyage.org/wiki/Istanbul#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_ist_free",
+      "cityId": "city_istanbul",
+      "kind": "free",
+      "title": "Free in one day",
+      "displayHint": "list",
+      "content": "Blue Mosque - free, closed to visitors for 90 minutes at each prayer\nSüleymaniye Mosque - free, and the terrace behind it is the best Golden Horn view\nSpice Bazaar and Grand Bazaar - free to walk, haggling expected if you buy\nGalata Bridge at dusk: fishermen above, fish restaurants below\nThe Bosphorus commuter ferry is a transit fare and beats every paid cruise",
+      "links": [
+        {
+          "label": "What to see",
+          "url": "https://en.wikivoyage.org/wiki/Istanbul#See"
+        }
+      ]
+    },
+    {
+      "id": "x_ist_night",
+      "cityId": "city_istanbul",
+      "kind": "nightlife",
+      "title": "Your one evening",
+      "displayHint": "text",
+      "content": "You land 11:40 and leave before dawn, so this is a single evening and a short night. Karaköy and Galata are walkable and lively; Istiklal Caddesi is busy until very late but touristy. A rooftop çay in Galata costs almost nothing and is the view people pay for elsewhere. Set two alarms - the 05:00 transfer is not generous.",
+      "links": [
+        {
+          "label": "Where to go",
+          "url": "https://en.wikivoyage.org/wiki/Istanbul#Drink"
+        }
+      ]
+    },
+    {
+      "id": "x_ber_food",
+      "cityId": "city_berlin",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "text",
+      "content": "Currywurst at Konnopke's, under the U2 tracks at Eberswalder Straße\nDöner: the queue at Mustafa's is 40 minutes, and any Kreuzberg Späti is 90% as good\nTurkish market on Maybachufer, Tuesday and Friday afternoons\nSunday brunch is an institution - go before noon or book\nVietnamese in Prenzlauer Berg is Berlin's quiet speciality",
+      "links": [
+        {
+          "label": "Eating in Berlin",
+          "url": "https://en.wikivoyage.org/wiki/Berlin#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_ber_free",
+      "cityId": "city_berlin",
+      "kind": "free",
+      "title": "Free things",
+      "displayHint": "list",
+      "content": "East Side Gallery - 1.3 km of painted Wall, open always, best before 10:00\nBrandenburg Gate and the Holocaust Memorial - no ticket, allow an hour for both\nReichstag glass dome - free, but registration closes days ahead\nTempelhof: a decommissioned airport you can walk the runways of\nMauerpark flea market and its open-air karaoke, Sunday afternoons",
+      "links": [
+        {
+          "label": "Reichstag dome registration",
+          "url": "https://www.bundestag.de/en/visittheBundestag/dome"
+        }
+      ]
+    },
+    {
+      "id": "x_ber_night",
+      "cityId": "city_berlin",
+      "kind": "nightlife",
+      "title": "After dark",
+      "displayHint": "text",
+      "content": "Kreuzberg and Friedrichshain run latest; clubs rarely fill before 01:00 and the famous ones turn away more people than they let in. Door policy is real: small groups, sober queue, no photos, do not talk in the line. RAW-Gelände on Revaler Straße is the dense strip if you want options within a block. Sunday is a real club night here, not a wind-down.",
+      "links": [
+        {
+          "label": "Bars and clubs",
+          "url": "https://en.wikivoyage.org/wiki/Berlin#Drink"
+        }
+      ]
+    },
+    {
+      "id": "x_ber_events",
+      "cityId": "city_berlin",
+      "kind": "event",
+      "title": "Berlin Art Week",
+      "displayHint": "text",
+      "content": "Usually mid-September - galleries and museums across the city open late with one ticket. The 2026 dates are not published yet; check before you go.",
+      "links": [
+        {
+          "label": "Berlin Art Week",
+          "url": "https://www.berlinartweek.de/en/"
+        },
+        {
+          "label": "What's on in Berlin",
+          "url": "https://www.visitberlin.de/en/event-calendar"
+        }
+      ]
+    },
+    {
+      "id": "x_cph_food",
+      "cityId": "city_copenhagen",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "list",
+      "content": "Smørrebrød at Torvehallerne - order two, they are smaller than they look\nA pølse from a street cart is the cheapest honest meal in the city\nReffen street-food yard on Refshaleøen - open through September, closes for winter\nBakeries: ask for kanelsnegle or cardamom snurrer, not a 'Danish'\nTap water is excellent and free everywhere - bottled water here is a tax on tourists",
+      "links": [
+        {
+          "label": "Eating in Copenhagen",
+          "url": "https://en.wikivoyage.org/wiki/Copenhagen#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_cph_free",
+      "cityId": "city_copenhagen",
+      "kind": "free",
+      "title": "Free things",
+      "displayHint": "list",
+      "content": "Nyhavn, Christiania and Superkilen park - all free to walk\nAssistens Cemetery: Kierkegaard and Hans Christian Andersen, and locals sunbathing\nThe harbour baths at Islands Brygge are free, and September is still swimmable\nMany museums are free on the first Wednesday of the month\nThe Round Tower is cheap; the Church of Our Saviour spire is worth the fee",
+      "links": [
+        {
+          "label": "What to see",
+          "url": "https://en.wikivoyage.org/wiki/Copenhagen#See"
+        }
+      ]
+    },
+    {
+      "id": "x_cph_night",
+      "cityId": "city_copenhagen",
+      "kind": "nightlife",
+      "title": "After dark",
+      "displayHint": "text",
+      "content": "Nørrebro for the neighbourhood bars, Vesterbro for the busier ones, and Kødbyen - the old meatpacking district - for late. Beer is expensive enough that Danes pre-drink at home, and you can too. Bars stay open past 02:00 at weekends. Cycling home drunk is illegal and enforced here.",
+      "links": [
+        {
+          "label": "Where to go",
+          "url": "https://en.wikivoyage.org/wiki/Copenhagen#Drink"
+        }
+      ]
+    },
+    {
+      "id": "x_osl_food",
+      "cityId": "city_oslo",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "list",
+      "content": "Mathallen at Vulkan - the affordable way to eat well in the most expensive city here\nGrünerløkka for cheaper kitchens and coffee that Norwegians take seriously\nShrimp or fish soup from the Aker Brygge quayside\nBrunost, the brown cheese, is sweet and divides people - try it once\nSupermarket dinners are a normal traveller move in Oslo, not a failure",
+      "links": [
+        {
+          "label": "Eating in Oslo",
+          "url": "https://en.wikivoyage.org/wiki/Oslo#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_osl_free",
+      "cityId": "city_oslo",
+      "kind": "free",
+      "title": "Free things",
+      "displayHint": "list",
+      "content": "Vigeland Sculpture Park - 200 sculptures, always open, no ticket\nWalk up the Opera House roof; it is designed to be walked on\nAkershus Fortress grounds and the harbour promenade\nEkeberg sculpture park for the view back over the fjord\nAllemannsretten - the right to roam - means the forests north of the city are yours",
+      "links": [
+        {
+          "label": "What to see",
+          "url": "https://en.wikivoyage.org/wiki/Oslo#See"
+        }
+      ]
+    },
+    {
+      "id": "x_osl_night",
+      "cityId": "city_oslo",
+      "kind": "nightlife",
+      "title": "After dark",
+      "displayHint": "list",
+      "content": "Grünerløkka and Torggata hold most of the bars. Prices are the highest on this trip - a round can cost what dinner did in Berlin, so Norwegians drink at home first (vorspiel) and go out late.\n\nGetting home: the metro runs to about 00:30 on weeknights, with night buses on Friday and Saturday.",
+      "links": [
+        {
+          "label": "Where to go",
+          "url": "https://en.wikivoyage.org/wiki/Oslo#Drink"
+        }
+      ]
+    },
+    {
+      "id": "x_krn_free",
+      "cityId": "city_kiruna",
+      "kind": "free",
+      "title": "Free things",
+      "displayHint": "text",
+      "content": "The aurora itself: no ticket, just darkness and a clear sky\nAbisko National Park and the start of the Kungsleden trail\nKiruna's church, moved whole across town as the mine swallowed the old centre\nThe lake shore after dark, away from the station lights - the best viewing is free\nSunset over Lapporten, the U-shaped valley you cannot miss from Abisko",
+      "links": [
+        {
+          "label": "Abisko on Wikivoyage",
+          "url": "https://en.wikivoyage.org/wiki/Abisko#See"
+        }
+      ]
+    },
+    {
+      "id": "x_krn_food",
+      "cityId": "city_kiruna",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "list",
+      "content": "Both STF stations serve dinner and it is usually the only hot option - book the sitting when you check in, not at 19:00\nBreakfast is included at Kiruna, not at Abisko\nReindeer, Arctic char and cloudberry are the local plates worth ordering\nKiruna town has a supermarket; Abisko effectively does not - buy before you go",
+      "links": [
+        {
+          "label": "Kiruna on Wikivoyage",
+          "url": "https://en.wikivoyage.org/wiki/Kiruna#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_krn_night",
+      "cityId": "city_kiruna",
+      "kind": "nightlife",
+      "title": "The sky is the nightlife",
+      "displayHint": "text",
+      "content": "There is no bar scene here and that is the point. Abisko sits in the rain shadow of the mountains, which is why it has the clearest skies in the Arctic.\n\nGive your eyes a full twenty minutes to adjust, away from every light including your phone. The aurora often looks grey to the naked eye and green to a camera - that is normal, not a failure. Stay out longer than feels sensible; it comes in waves with quiet gaps between them."
+    },
+    {
+      "id": "x_krn_event",
+      "cityId": "city_kiruna",
+      "kind": "event",
+      "title": "Aurora season",
+      "displayHint": "text",
+      "content": "Genuinely on while you are there. Mid-September is the start of the season: roughly 5-6 hours of proper darkness, and the lakes are still unfrozen enough to mirror it. Best odds between 21:00 and 02:00 on a clear night, looking north. Give your eyes twenty minutes to adjust and check the forecast each evening.",
+      "links": [
+        {
+          "label": "Aurora forecast (no signup)",
+          "url": "https://www.swpc.noaa.gov/products/aurora-30-minute-forecast"
+        },
+        {
+          "label": "Abisko sky report",
+          "url": "https://lightsoverlapland.com/aurora-forecast/"
+        }
+      ],
+      "startDate": "2026-09-17",
+      "endDate": "2026-09-20"
+    },
+    {
+      "id": "x_hel_food",
+      "cityId": "city_helsinki",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "list",
+      "content": "Hakaniemi and the Old Market Hall - salmon soup, karjalanpiirakka\nWeekday lunch buffets are the cheapest proper meal in Finland, roughly noon to 14:00\nKorvapuusti - the cinnamon bun - with coffee, which Finns drink more of than anyone\nEurohostel has a kitchen and there is a supermarket nearby; use both\nTap water is famously good, so refill rather than buy",
+      "links": [
+        {
+          "label": "Eating in Helsinki",
+          "url": "https://en.wikivoyage.org/wiki/Helsinki#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_hel_free",
+      "cityId": "city_helsinki",
+      "kind": "free",
+      "title": "Free things",
+      "displayHint": "list",
+      "content": "Oodi central library - architecture, a terrace, and nobody minds you staying all day\nKamppi Chapel of Silence - free, and genuinely silent\nSuomenlinna sea fortress - the island is free, only the ferry costs, on a normal HSL ticket\nEsplanadi park and the harbour market\nTemppeliaukio, the church blasted into rock, is cheap rather than free",
+      "links": [
+        {
+          "label": "What to see",
+          "url": "https://en.wikivoyage.org/wiki/Helsinki#See"
+        }
+      ]
+    },
+    {
+      "id": "x_hel_night",
+      "cityId": "city_helsinki",
+      "kind": "nightlife",
+      "title": "After dark",
+      "displayHint": "text",
+      "content": "Kallio is the cheap, lively quarter and is walking distance from Eurohostel. Punavuori for design bars, Kamppi for the busiest. Finnish bars run to 02:00 on weeknights and 04:00 at weekends. Alcohol above 5.5% is only sold in Alko shops, which shut at 18:00 on Saturday and all day Sunday - plan ahead or pay bar prices.",
+      "links": [
+        {
+          "label": "Where to go",
+          "url": "https://en.wikivoyage.org/wiki/Helsinki#Drink"
+        }
+      ]
+    },
+    {
+      "id": "x_tll_food",
+      "cityId": "city_tallinn",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "list",
+      "content": "Old Town cellars do black bread, elk soup and Estonian beer - touristy but good\nTelliskivi Creative City has the better modern food and is 10 minutes from the ferry\nKohuke, a curd snack bar, is the thing every Estonian grew up on\nPrices are noticeably below Helsinki, which is why the ferry is full of Finns",
+      "links": [
+        {
+          "label": "Eating in Tallinn",
+          "url": "https://en.wikivoyage.org/wiki/Tallinn#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_tll_free",
+      "cityId": "city_tallinn",
+      "kind": "free",
+      "title": "Free in a few hours",
+      "displayHint": "text",
+      "content": "The whole walled Old Town, UNESCO listed and free to walk\nKohtuotsa and Patkuli viewing platforms on Toompea hill - no ticket, the postcard view\nTelliskivi Creative City: street art, yards, and the Balti Jaam market beside it\nFerry terminal to Toompea is about 25 minutes on foot, so the Old Town is walkable\nSt Olaf's church is free; the tower is not",
+      "links": [
+        {
+          "label": "What to see",
+          "url": "https://en.wikivoyage.org/wiki/Tallinn#See"
+        }
+      ]
+    },
+    {
+      "id": "x_bud_food",
+      "cityId": "city_budapest",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "list",
+      "content": "Great Market Hall - lángos upstairs, paprika and salami downstairs\nGulyás is a soup here; the stew you are thinking of is pörkölt\nRuin-bar food yards in District VII for cheap plates late\nKürtőskalács from a street oven, not a mall counter\nCoffee houses in Pest are grand and cheaper than they look",
+      "links": [
+        {
+          "label": "Eating in Budapest",
+          "url": "https://en.wikivoyage.org/wiki/Budapest#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_bud_free",
+      "cityId": "city_budapest",
+      "kind": "free",
+      "title": "Free things",
+      "displayHint": "list",
+      "content": "Fisherman's Bastion - the lower terraces are free, only the upper ones are ticketed\nShoes on the Danube memorial, and the promenade either side of it\nSt Stephen's Basilica - free entry, a donation expected\nMargaret Island: a whole car-free island, free, good for the road-trip rest day\nWalk across the Chain Bridge at night when it is lit",
+      "links": [
+        {
+          "label": "What to see",
+          "url": "https://en.wikivoyage.org/wiki/Budapest#See"
+        }
+      ]
+    },
+    {
+      "id": "x_bud_night",
+      "cityId": "city_budapest",
+      "kind": "nightlife",
+      "title": "After dark",
+      "displayHint": "text",
+      "content": "The ruin bars of District VII are the reason people come. Szimpla Kert is the famous one and still worth it before 22:00, when it is a bar rather than a queue. Instant-Fogas is the biggest.\n\nSzéchenyi baths run late-night parties some weekends. Four nights here is the longest stop of the trip, so pace it - and always agree a taxi price or use Bolt.",
+      "links": [
+        {
+          "label": "Ruin bars and more",
+          "url": "https://en.wikivoyage.org/wiki/Budapest#Drink"
+        }
+      ]
+    },
+    {
+      "id": "x_bud_event",
+      "cityId": "city_budapest",
+      "kind": "event",
+      "title": "Budapest Wine Festival",
+      "displayHint": "text",
+      "content": "Usually early-to-mid September at Buda Castle, with the city spread out below. The 2026 dates are not published yet - check before counting on it.",
+      "links": [
+        {
+          "label": "Budapest Wine Festival",
+          "url": "https://aborfesztival.hu/en/"
+        },
+        {
+          "label": "What's on in Budapest",
+          "url": "https://visitbudapest.travel/events/"
+        }
+      ]
+    },
+    {
+      "id": "x_bra_free",
+      "cityId": "city_bratislava",
+      "kind": "free",
+      "title": "Free in a stopover",
+      "displayHint": "text",
+      "content": "The Old Town is small enough to see properly in two hours and costs nothing\nČumil, the bronze sewer worker leaning out of the pavement - the photo everyone takes\nThe Blue Church (St Elisabeth) - free, ten minutes' walk from the centre\nCastle grounds are free and give you the Danube view; the museum inside is not\nMichael's Gate and the old walls, all within the same few streets",
+      "links": [
+        {
+          "label": "Bratislava on Wikivoyage",
+          "url": "https://en.wikivoyage.org/wiki/Bratislava#See"
+        }
+      ]
+    },
+    {
+      "id": "x_vie_food",
+      "cityId": "city_vienna",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "list",
+      "content": "Naschmarkt - walk past the first tourist stretch before you choose\nA käsekrainer from a Würstelstand at midnight is a Vienna rite of passage\nCoffee houses charge for the chair, not the coffee: one melange buys you an hour\nSchnitzel done properly is veal and priced like it; pork is schnitzel 'vom Schwein'\nBeisl - the neighbourhood pub-restaurant - is where the value is",
+      "links": [
+        {
+          "label": "Eating in Vienna",
+          "url": "https://en.wikivoyage.org/wiki/Vienna#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_vie_free",
+      "cityId": "city_vienna",
+      "kind": "free",
+      "title": "Free things",
+      "displayHint": "text",
+      "content": "Ride the Ring on tram 1 or 2 for a normal fare and see half the grand architecture\nSt Stephen's Cathedral nave is free; the towers and catacombs are ticketed\nCentral Cemetery: Beethoven, Brahms, Schubert, Strauss - no charge\nMuseumsQuartier courtyard - free to sit in, and in September everyone does\nPrater park is free to walk; only the rides cost",
+      "links": [
+        {
+          "label": "What to see",
+          "url": "https://en.wikivoyage.org/wiki/Vienna#See"
+        }
+      ]
+    },
+    {
+      "id": "x_vie_night",
+      "cityId": "city_vienna",
+      "kind": "nightlife",
+      "title": "After dark",
+      "displayHint": "text",
+      "content": "One night only, arriving from Bratislava. The Bermuda Triangle near Schwedenplatz is the compact bar quarter and the easiest choice on a short stop. The far end of Naschmarkt runs later. Vienna's U-Bahn runs all night on Friday and Saturday.",
+      "links": [
+        {
+          "label": "Where to go",
+          "url": "https://en.wikivoyage.org/wiki/Vienna#Drink"
+        }
+      ]
+    },
+    {
+      "id": "x_prg_food",
+      "cityId": "city_prague",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "text",
+      "content": "Walk one street back from Old Town Square and the price halves\nSvíčková and goulash in a pub, not a restaurant with a menu in six languages\nBeer is cheaper than water; ask for hladinka to get it poured properly\nTrdelník is not Czech, whatever the sign outside says\nLunch menus (polední menu) are the cheapest real meal of the day",
+      "links": [
+        {
+          "label": "Eating in Prague",
+          "url": "https://en.wikivoyage.org/wiki/Prague#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_prg_free",
+      "cityId": "city_prague",
+      "kind": "free",
+      "title": "Free things",
+      "displayHint": "list",
+      "content": "Charles Bridge at 06:00 is empty - and you have a 06:00 departure anyway\nCastle grounds free to walk; the buildings inside are ticketed\nPetřín hill for the climb and the view, and the Lennon Wall on the way\nVyšehrad: the other castle, with almost none of the crowds\nThe astronomical clock show, hourly, free and briefly underwhelming - watch once",
+      "links": [
+        {
+          "label": "What to see",
+          "url": "https://en.wikivoyage.org/wiki/Prague#See"
+        }
+      ]
+    },
+    {
+      "id": "x_prg_night",
+      "cityId": "city_prague",
+      "kind": "nightlife",
+      "title": "After dark",
+      "displayHint": "text",
+      "content": "Žižkov has the most pubs per head in the city and the fewest stag parties. Náplavka, the riverbank, runs late in good weather and is where Praguers go.\n\nLast stop of the trip: the flight home is 09:15 and you leave for the airport at 06:00, so the final night has a hard edge on it. Trams run all night on numbered night routes if you misjudge it.",
+      "links": [
+        {
+          "label": "Where to go",
+          "url": "https://en.wikivoyage.org/wiki/Prague#Drink"
+        }
+      ]
+    },
+    {
+      "id": "x_prg_event",
+      "cityId": "city_prague",
+      "kind": "event",
+      "title": "Dvořák Prague festival",
+      "displayHint": "text",
+      "content": "Classical music across the city, traditionally through September. Dates and programme for 2026 are not out yet.",
+      "links": [
+        {
+          "label": "Dvořák Prague",
+          "url": "https://www.dvorakovapraha.cz/en/"
+        },
+        {
+          "label": "What's on in Prague",
+          "url": "https://www.prague.eu/en/events"
+        }
+      ]
+    },
+    {
+      "id": "x_bra_food",
+      "cityId": "city_bratislava",
+      "kind": "food",
+      "title": "Where to eat",
+      "displayHint": "list",
+      "content": "Bryndzové halušky - potato dumplings with sheep cheese, the national dish\nSlovak Pub on Obchodná for it done cheaply and well\nYou arrive from Budapest and leave for Vienna the same day, so this is one meal\nPrices are noticeably below Vienna, an hour up the road",
+      "links": [
+        {
+          "label": "Bratislava on Wikivoyage",
+          "url": "https://en.wikivoyage.org/wiki/Bratislava#Eat"
+        }
+      ]
+    },
+    {
+      "id": "x_bra_night",
+      "cityId": "city_bratislava",
+      "kind": "nightlife",
+      "title": "Passing through",
+      "displayHint": "text",
+      "content": "This is a daytime stop between Budapest and Vienna, so there is no evening to plan. If the timing slips, the Old Town bars are all within the same few streets and the last train to Vienna runs late."
+    },
+    {
+      "id": "x_cph_event",
+      "cityId": "city_copenhagen",
+      "kind": "event",
+      "title": "Reffen street food",
+      "displayHint": "text",
+      "content": "The open-air food yard on Refshaleøen runs through the summer season and closes for winter around the end of September, so mid-September is one of the last chances. Check it is still open before crossing the water.",
+      "links": [
+        {
+          "label": "Reffen",
+          "url": "https://reffen.dk/en/"
+        }
+      ]
+    },
+    {
+      "id": "x_osl_event",
+      "cityId": "city_oslo",
+      "kind": "event",
+      "title": "Oslo Culture Night",
+      "displayHint": "text",
+      "content": "Kulturnatt - museums, galleries and venues across the city open late for one night, most of it free. Usually mid-September; the 2026 date is not published yet, so check whether it lands on your two nights.",
+      "links": [
+        {
+          "label": "What's on in Oslo",
+          "url": "https://www.visitoslo.com/en/whats-on/"
+        }
+      ]
+    },
+    {
+      "id": "x_hel_event",
+      "cityId": "city_helsinki",
+      "kind": "event",
+      "title": "Helsinki Festival",
+      "displayHint": "text",
+      "content": "The city's big arts festival traditionally runs from late August into early September, so it may just have finished before you arrive on the 20th. Worth checking - the Huvila tent programme is the part worth catching.",
+      "links": [
+        {
+          "label": "Helsinki Festival",
+          "url": "https://helsinkifestival.fi/en/"
+        },
+        {
+          "label": "What's on in Helsinki",
+          "url": "https://myhelsinki.fi/en/whats-on/"
+        }
+      ]
+    },
+    {
+      "id": "x_vie_event",
+      "cityId": "city_vienna",
+      "kind": "event",
+      "title": "Vienna Design Week",
+      "displayHint": "text",
+      "content": "Usually opens in late September and runs into October, with installations spread across the city and most of them free to walk into. The 2026 dates are not out yet and you only have one night here, so check before counting on it.",
+      "links": [
+        {
+          "label": "Vienna Design Week",
+          "url": "https://www.viennadesignweek.at/en/"
+        },
+        {
+          "label": "What's on in Vienna",
+          "url": "https://www.wien.info/en/see-do/events"
+        }
+      ]
+    },
+    {
+      "id": "x_ist_event",
+      "cityId": "city_istanbul",
+      "kind": "event",
+      "title": "Check before you land",
+      "displayHint": "text",
+      "content": "You have 20 hours and no fixed plan, which is the perfect shape for whatever happens to be on. Istanbul's events calendar is worth a look the week before - a concert or a match will reshape traffic as well as your evening.",
+      "links": [
+        {
+          "label": "What's on in Istanbul",
+          "url": "https://www.istanbul.goturkiye.com/events"
+        }
+      ]
+    },
+    {
+      "id": "x_tll_event",
+      "cityId": "city_tallinn",
+      "kind": "event",
+      "title": "Check the square",
+      "displayHint": "text",
+      "content": "Town Hall Square runs markets and small festivals through the warmer months, and September still counts. With four hours it is worth a glance at the calendar before you sail rather than after.",
+      "links": [
+        {
+          "label": "What's on in Tallinn",
+          "url": "https://www.visittallinn.ee/eng/visitor/discover/events"
+        }
+      ]
+    },
+    {
+      "id": "x_bud_event2",
+      "cityId": "city_budapest",
+      "kind": "event",
+      "title": "Bath night",
+      "displayHint": "text",
+      "content": "Széchenyi runs late-night 'sparty' events on many Saturday nights through the year, and the baths themselves stay open late most days. Four nights here is the longest stop of the trip and this is the obvious one to book ahead.",
+      "links": [
+        {
+          "label": "Széchenyi Baths",
+          "url": "https://www.szechenyibath.hu/en"
+        }
+      ]
+    },
+    {
+      "id": "x_tll_night",
+      "cityId": "city_tallinn",
+      "kind": "nightlife",
+      "title": "If you have the evening",
+      "displayHint": "text",
+      "content": "You have roughly four hours before the 15:25 flight, so this is a daytime visit rather than a night out. If plans slip, the Old Town bars around Town Hall Square run late and Telliskivi is where Estonians actually go.",
+      "links": [
+        {
+          "label": "Tallinn on Wikivoyage",
+          "url": "https://en.wikivoyage.org/wiki/Tallinn#Drink"
+        }
+      ]
+    },
+    {
+      "id": "x_bra_event",
+      "cityId": "city_bratislava",
+      "kind": "event",
+      "title": "Check the Old Town",
+      "displayHint": "text",
+      "content": "Hlavné námestie runs markets and small events through the warmer months. You are here for a few hours between Budapest and Vienna, so a glance at the calendar the morning before is worth more than a plan.",
+      "links": [
+        {
+          "label": "What's on in Bratislava",
+          "url": "https://www.visitbratislava.com/whats-on/"
+        }
+      ]
+    }
+  ],
+  "suppressed": [
+    "def_daily-budget",
+    "def_transfers"
+  ]
+}

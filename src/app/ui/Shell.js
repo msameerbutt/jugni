@@ -72,7 +72,7 @@ export function App() {
             <${Icon} name="share-2" />
           </button>
           <a class="btn btn--ghost btn--icon" href="#/data" aria-label="Trip data">
-            <${Icon} name="database" />
+            <${Icon} name="settings" />
           </a>
         </header>
 

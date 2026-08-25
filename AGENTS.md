@@ -38,6 +38,8 @@ when the `Dockerfile` changes in a way the cache might miss.
 |---|---|
 | `make build` | Bundle `src/` into one self-contained file. `TRIP=<slug>` bakes that trip's data in; without an `input.json` you get the generic empty shell. |
 | `make generate` | Run intake over `raw/` (or `FROM=summary.txt`), write extracts, then merge a Convert candidate into `input.json` and build. Intake **accumulates**: a file is extracted once (matched by content hash), and an original taken out of `raw/` keeps its extract, marked `archived`. |
+| `make sample` | Rebuild `trips/sample` — the only committed trip — from the reference trip, then validate, build and check it. **Run after any schema or content change.** |
+| `make blank` | Build the empty shell (build path (b)) to `dist/jugni.html`. |
 | `make icons` | Vendor icon/flag SVGs from the image into `src/icons/`. `FLAGS=all` for every flag. |
 | `make check` | **Verify** a built file: parse the bundle, then run it in jsdom with `fetch` rejecting. Not optional. |
 | `make validate` | Check an `input.json` against the schema shape (§4) before building. |
@@ -66,7 +68,9 @@ default.json The standard checklist catalogue merged into every trip (§4)
              Keep the originals somewhere — the extract is text only, so
              barcodes, QR codes and layout do not survive it, and every
              `sourceFile` in input.json points at the document by name.
-/trips/      Generated input.json / output / built app per trip — gitignored
+/trips/      One folder per trip — gitignored, EXCEPT trips/sample, which is
+             committed on purpose and contains no real data. Regenerate it with
+             `make sample` whenever the schema or the app changes.
 /docs/       The spec and related docs
 Makefile  Dockerfile  docker-compose.yml  AGENTS.md
 ```
@@ -110,6 +114,12 @@ later. Live widgets call free, no-key APIs directly and always cache their last
 success; a failed call shows cached data with a "last updated" stamp, and a
 first run with no network shows an explicit "not yet available" state, never a
 blank.
+
+**Browser storage is scoped per trip.** Every trip builds to a file named
+`jugni.html`, so trip state is keyed `jugni.trip.v1::<tripKey>` from the
+`data-trip` stamp the build writes. Anything trip-specific added to
+localStorage must be scoped the same way, or two trips open in one browser
+overwrite each other. Per-viewer preferences stay unscoped.
 
 **Privacy boundaries (§4, §6).** `raw/` and everything under `trips/` contain
 real PII — names, contact details, GPS coordinates, confirmation numbers. Both

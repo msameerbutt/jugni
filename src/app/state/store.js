@@ -7,11 +7,56 @@ import { useSyncExternalStore } from 'preact/compat';
 import { emptyDoc, normalize, applyDefaults, SCHEMA_VERSION } from './schema.js';
 import { uid, todayISO } from '../lib/util.js';
 
-const KEY = 'jugni.trip.v1';
+/* Storage is scoped per trip.
+
+   Every trip builds to a file named jugni.html. Sharing one key meant opening
+   a second trip silently replaced the first one's ticked tasks and logged
+   spend — and because the app then showed a perfectly valid trip, nothing
+   looked wrong until the traveller went looking for their edits.
+
+   The scope comes from `data-trip` on the embedded data: the trip's slug, or a
+   hash of its name and start date. Stable across rebuilds, so a regeneration
+   never orphans what the traveller has done; different between trips, which is
+   the whole point. */
+let scope = '';
+const scoped = (base) => (scope ? `${base}::${scope}` : base);
+
+const KEY_BASE = 'jugni.trip.v1';
 /* Which build the saved copy came from. Kept beside the trip rather than
    inside it: it describes the file, not the journey, and must never travel
    into an exported output-<nickname>.json. */
-const BUILD_KEY = 'jugni.build.v1';
+const BUILD_KEY_BASE = 'jugni.build.v1';
+const CLEARED_KEY_BASE = 'jugni.cleared';
+
+const KEY = () => scoped(KEY_BASE);
+const BUILD_KEY = () => scoped(BUILD_KEY_BASE);
+const CLEARED_KEY = () => scoped(CLEARED_KEY_BASE);
+
+/* A copy saved before storage was scoped sits under the bare key. Adopt it
+   once — but only if it is actually THIS trip, because the unscoped key is
+   exactly where another trip's data may be sitting after a clobber. Name and
+   start date are enough to tell: they are what the fallback scope is built
+   from. */
+function adoptLegacy(baked) {
+  let raw = null;
+  try { raw = localStorage.getItem(KEY_BASE); } catch { return null; }
+  if (!raw) return null;
+  let old;
+  try { old = JSON.parse(raw); } catch { return null; }
+  const a = old?.trip, b = baked?.trip;
+  if (!a || !b) return null;
+  if ((a.name || '') !== (b.name || '') || (a.startDate || '') !== (b.startDate || '')) {
+    return null;                       // someone else's trip; leave it alone
+  }
+  try {
+    localStorage.setItem(KEY(), raw);
+    const build = localStorage.getItem(BUILD_KEY_BASE);
+    if (build) localStorage.setItem(BUILD_KEY(), build);
+    localStorage.removeItem(KEY_BASE);
+    localStorage.removeItem(BUILD_KEY_BASE);
+  } catch { /* storage refused; the parsed copy is still returned */ }
+  return old;
+}
 
 /* The trip is plain JSON, so a round-trip clone is equivalent to
    structuredClone and works everywhere — including older webviews and the
@@ -67,16 +112,24 @@ export const takeWelcomeFlag = () => { const v = needsWelcome; needsWelcome = fa
 
 /* ---------- Boot ---------- */
 
-export function init(baked, defaults, buildId = '') {
+export function init(baked, defaults, buildId = '', tripKey = '') {
   catalogue = defaults || catalogue;
   bakedDoc = baked?.trip ? baked : null;
   currentBuild = buildId || '';
+  scope = String(tripKey || '').trim();
 
   let source = null, origin = 'empty';
   try {
-    const saved = localStorage.getItem(KEY);
+    const saved = localStorage.getItem(KEY());
     if (saved) { source = JSON.parse(saved); origin = 'local'; }
   } catch { /* private mode or corrupt entry — fall through to baked */ }
+
+  /* Nothing under this trip's own key: this may be a browser that used the app
+     before storage was scoped. */
+  if (!source && scope) {
+    const legacy = adoptLegacy(baked);
+    if (legacy) { source = legacy; origin = 'local'; }
+  }
 
   /* What the traveller has been editing wins over what was baked in at build
      time; otherwise reopening the file would discard their trip. */
@@ -88,7 +141,7 @@ export function init(baked, defaults, buildId = '') {
      UI offer the choice; taking it automatically would throw away ticked
      tasks and logged spend, which is the very thing the rule above protects. */
   let savedBuild = null;
-  try { savedBuild = localStorage.getItem(BUILD_KEY); } catch { /* ignore */ }
+  try { savedBuild = localStorage.getItem(BUILD_KEY()); } catch { /* ignore */ }
   staleBuild = (origin === 'local' && buildId && savedBuild && savedBuild !== buildId)
     ? { from: savedBuild, to: buildId } : null;
 
@@ -122,7 +175,7 @@ export function init(baked, defaults, buildId = '') {
 
 function rememberBuild(id) {
   if (readonly) return;
-  try { localStorage.setItem(BUILD_KEY, id); } catch { /* ignore */ }
+  try { localStorage.setItem(BUILD_KEY(), id); } catch { /* ignore */ }
 }
 
 /* { from, to } when this file is newer than the saved copy, else null. */
@@ -136,7 +189,7 @@ export function setReadonly(on) {
 
 function persist() {
   if (readonly) return;
-  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  try { localStorage.setItem(KEY(), JSON.stringify(state)); }
   catch { /* storage full or blocked; the session still works in memory */ }
 }
 
@@ -215,7 +268,7 @@ export function restoreBuilt() {
   const res = normalize(clone(bakedDoc));
   state = applyDefaults(res.doc, catalogue);
   warnings = res.warnings;
-  try { localStorage.removeItem('jugni.cleared'); } catch { /* ignore */ }
+  try { localStorage.removeItem(CLEARED_KEY()); } catch { /* ignore */ }
   /* This browser is now holding exactly this build, so the mismatch is
      settled — stamp it, or the offer would come back on every load. */
   staleBuild = null;
@@ -227,15 +280,15 @@ export function restoreBuilt() {
 }
 
 export function reset() {
-  try { localStorage.removeItem(KEY); } catch { /* nothing to clear */ }
+  try { localStorage.removeItem(KEY()); } catch { /* nothing to clear */ }
   location.reload();
 }
 
 /* Empties the app outright, ignoring whatever was baked in. */
 export function clearAll() {
   try {
-    localStorage.removeItem(KEY);
-    localStorage.setItem('jugni.cleared', '1');
+    localStorage.removeItem(KEY());
+    localStorage.setItem(CLEARED_KEY(), '1');
   } catch { /* nothing to clear */ }
   location.reload();
 }
@@ -243,8 +296,8 @@ export function clearAll() {
 /* Set by clearAll so the boot does not immediately re-seed from baked data. */
 export function takeClearedFlag() {
   try {
-    const was = localStorage.getItem('jugni.cleared') === '1';
-    if (was) localStorage.removeItem('jugni.cleared');
+    const was = localStorage.getItem(CLEARED_KEY()) === '1';
+    if (was) localStorage.removeItem(CLEARED_KEY());
     return was;
   } catch { return false; }
 }

@@ -67,6 +67,13 @@ window.HTMLDialogElement.prototype.close = function (v) { this.open = false; thi
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* Trip state lives under a key scoped to this trip, so every assertion that
+   reads it has to ask the document which trip this file is. */
+function tripStorageKey(base = 'jugni.trip.v1') {
+  const scope = doc.getElementById('jugni-data')?.getAttribute('data-trip') || '';
+  return scope ? `${base}::${scope}` : base;
+}
+
 /* hashchange dispatches on the event loop, so a route change is not visible
    until the next turn — and setting the hash to what it already is fires
    nothing at all, which would hang this test rather than fail it. */
@@ -119,9 +126,13 @@ function goto(route) {
     const text = (view.textContent || '').trim();
     if (text.length < 20) fail(`route ${route}: rendered almost nothing (${text.length} chars)`);
 
-    const current = doc.querySelector('.navstub[aria-current="page"]');
-    if (!current || current.getAttribute('href') !== '#/' + route) {
-      fail(`route ${route}: nav does not mark it as current`);
+    /* Whichever control leads here must say so. Not every screen is reached
+       from a `.navstub` — Trip data is a gear at the top of the rail — so ask
+       for the marker by role, not by the class it happens to wear. */
+    const marked = [...doc.querySelectorAll('[aria-current="page"]')]
+      .map((el) => el.getAttribute('href'));
+    if (!marked.includes('#/' + route)) {
+      fail(`route ${route}: nav does not mark it as current (marked: ${marked.join(', ') || 'nothing'})`);
     }
     if ((doc.title || '').trim() === '') fail(`route ${route}: document title is empty`);
 
@@ -234,7 +245,7 @@ function goto(route) {
     box.click();
     await wait(1100);   // the row animates out before the store is written
     const stored = (() => {
-      try { return JSON.parse(window.localStorage.getItem('jugni.trip.v1') || '{}'); }
+      try { return JSON.parse(window.localStorage.getItem(tripStorageKey()) || '{}'); }
       catch { return {}; }
     })();
     const rec = (stored.checklist || []).find((c) => c.task === label);
@@ -320,6 +331,71 @@ function goto(route) {
       [...doc.querySelectorAll('.lens__opt')]
         .find((b) => /by stop/i.test(b.textContent || ''))?.click();
       await wait(60);
+    }
+  }
+
+  /* Destination guide panels (schema 1.5).
+
+     The page a traveller opens on a street corner wants "where do I eat" and
+     "what is on tonight" as their own sections, not one pile of notes. And the
+     short facts — emergency number, plug type, tipping — belong in a strip:
+     as cards in a carousel each cost most of a phone screen to say twenty-five
+     characters, and hid the next one behind a swipe. */
+  {
+    const baked = JSON.parse(doc.getElementById('jugni-data')?.textContent?.trim() || '{}');
+    const kinds = new Set((baked.extras || []).map((x) => x.kind).filter((k) => k && k !== 'note'));
+    const withKind = (baked.extras || []).find((x) => kinds.has(x.kind));
+
+    if (!withKind) {
+      console.log('  --    guide panels: no categorised destination content in this trip');
+    } else {
+      await goto(`destinations/${withKind.cityId}`);
+      await wait(160);
+      const heads = [...doc.querySelectorAll('.fold__head')].map((b) => b.textContent.trim());
+      const PANEL = { food: 'Best food', free: 'Free things',
+                      nightlife: 'After dark', event: "On while you're here" };
+      const cityKinds = new Set((baked.extras || [])
+        .filter((x) => x.cityId === withKind.cityId && PANEL[x.kind]).map((x) => x.kind));
+      const missing = [...cityKinds].filter((k) => !heads.some((h) => h.startsWith(PANEL[k])));
+
+      if (missing.length) {
+        fail(`destination page has ${[...cityKinds]} content but no panel for: ${missing}`);
+      } else {
+        console.log(`  ok    guide panels render: ${[...cityKinds].map((k) => PANEL[k]).join(', ')}`);
+      }
+
+      /* Short facts must be a strip, not one card each. */
+      const short = (baked.destinationNotes || [])
+        .filter((n) => n.cityId === withKind.cityId && (n.body || '').length <= 90);
+      const strip = doc.querySelectorAll('.qfact').length;
+      if (short.length && strip !== short.length) {
+        fail(`${short.length} short destination facts but ${strip} in the quick-facts strip`);
+      } else if (short.length) {
+        console.log(`  ok    ${strip} short facts shown as a strip, not ${strip} cards`);
+      }
+    }
+  }
+
+  /* Zero is an answer. A leg recorded as costing nothing — because the fare
+     sits on another leg of the same ticket — must not be listed as having no
+     price. Treating 0 as an empty box made that leg ask forever. */
+  {
+    const baked = JSON.parse(doc.getElementById('jugni-data')?.textContent?.trim() || '{}');
+    const zeroed = [...(baked.transport || []), ...(baked.stays || [])]
+      .filter((r) => r.cost === 0);
+
+    await goto('expenses');
+    await wait(120);
+    const panel = (doc.querySelector('[data-view]')?.textContent || '').replace(/\s+/g, ' ');
+    const wrong = zeroed.filter((r) => panel.includes(
+      r.name || `${r.from || '?'} → ${r.to || '?'}`));
+
+    if (!zeroed.length) {
+      console.log('  --    explicit zero: nothing in this trip is recorded as free');
+    } else if (wrong.length) {
+      fail(`${wrong.length} booking(s) recorded as costing 0 are still listed as unpriced`);
+    } else {
+      console.log(`  ok    a booking recorded as 0 counts as answered, not blank`);
     }
   }
 
@@ -466,6 +542,36 @@ function goto(route) {
       }
       sheet?.close();
       await wait(60);
+    }
+  }
+
+  /* Storage is scoped to this trip.
+
+     Every trip builds to a file called jugni.html. One shared localStorage key
+     meant opening a second trip overwrote the first one's ticked tasks and
+     logged spend — and the app then showed a perfectly valid trip, so nothing
+     looked wrong until the traveller went looking for their edits. */
+  {
+    const el = doc.getElementById('jugni-data');
+    const tripKey = el?.getAttribute('data-trip') || '';
+    const baked = JSON.parse(el?.textContent?.trim() || '{}');
+
+    if (!baked.trip) {
+      console.log('  --    storage scope: empty shell, nothing to scope');
+    } else if (!tripKey) {
+      fail('a baked trip carries no data-trip, so its storage is shared with every other trip');
+    } else {
+      const keys = [];
+      for (let i = 0; i < window.localStorage.length; i += 1) keys.push(window.localStorage.key(i));
+      const unscoped = keys.filter((k) => /^jugni\.(trip|build|cleared)/.test(k)
+                                          && !k.endsWith(`::${tripKey}`));
+      if (unscoped.length) {
+        fail(`trip state written to unscoped key(s): ${unscoped.join(', ')}`);
+      } else if (!keys.some((k) => k === `jugni.trip.v1::${tripKey}`)) {
+        fail(`nothing saved under jugni.trip.v1::${tripKey}`);
+      } else {
+        console.log(`  ok    trip state stored under its own key (::${tripKey})`);
+      }
     }
   }
 
@@ -645,8 +751,8 @@ async function checkStaleBuildIsSurfaced(currentBuild) {
     document_data_of(fs.readFileSync(file, 'utf8')));
 
   /* (a) Same build — the notice must stay away, or it nags on every load. */
-  const same = boot({ 'jugni.trip.v1': JSON.stringify(savedTrip),
-                      'jugni.build.v1': currentBuild });
+  const same = boot({ [tripStorageKey()]: JSON.stringify(savedTrip),
+                      [tripStorageKey('jugni.build.v1')]: currentBuild });
   await new Promise((r) => setTimeout(r, 220));
   if (same.document.querySelector('.rebuilt')) {
     fail('rebuild notice shows even though the saved copy is from this same build');
@@ -654,8 +760,8 @@ async function checkStaleBuildIsSurfaced(currentBuild) {
   same.close();
 
   /* (b) Different build — it must be surfaced, with a way to take the data. */
-  const stale = boot({ 'jugni.trip.v1': JSON.stringify(savedTrip),
-                       'jugni.build.v1': '0000deadbeef' });
+  const stale = boot({ [tripStorageKey()]: JSON.stringify(savedTrip),
+                       [tripStorageKey('jugni.build.v1')]: '0000deadbeef' });
   await new Promise((r) => setTimeout(r, 220));
   const notice = stale.document.querySelector('.rebuilt');
   if (!notice) {

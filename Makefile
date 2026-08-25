@@ -19,7 +19,9 @@ RUN := $(COMPOSE) run --rm jugni
 # triggers an image build by hand.
 STAMP := .make/image.stamp
 
-TRIP  ?= default
+# The committed sample trip is the sensible default now that every other trip
+# is gitignored: `make check` with no arguments verifies something real.
+TRIP  ?= sample
 # Which file under trips/<slug>/input/ to build. `default` is the trip itself;
 # an exported copy dropped back in as input1.json is built with NAME=input1.
 NAME  ?= default
@@ -27,8 +29,10 @@ NAME  ?= default
 INPUT ?=
 OUT   ?= trips/$(TRIP)/jugni.html
 FROM  ?=
+# Which real trip `make sample` derives the committed example from.
+FROM_TRIP ?= euro2026
 
-.PHONY: help build check icons generate update validate test shell run down rebuild image clean
+.PHONY: help build check icons generate update validate test sample blank shell run down rebuild image clean
 
 help: ## Show this help
 	@echo "Jugni — make targets (all run inside Docker)"
@@ -80,6 +84,16 @@ rebuild: ## Force a clean image rebuild (no cache)
 	@mkdir -p .make
 	$(COMPOSE) build --no-cache jugni
 	@touch $(STAMP)
+
+sample: image ## Rebuild the committed sample trip from the reference trip, then verify it
+	$(RUN) python scripts/make_sample.py --from "$(FROM_TRIP)"
+	$(MAKE) --no-print-directory validate TRIP=sample
+	$(MAKE) --no-print-directory build TRIP=sample
+	$(MAKE) --no-print-directory check TRIP=sample
+
+blank: image ## Build the empty shell — build path (b), imports a trip in-browser
+	$(RUN) python scripts/build.py --out "dist/jugni.html"
+	$(MAKE) --no-print-directory check OUT=dist/jugni.html
 
 clean: ## Remove build artifacts (never touches raw/, intake/ or input/)
 	$(RUN) python scripts/clean.py --trip "$(TRIP)"

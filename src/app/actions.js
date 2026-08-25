@@ -332,7 +332,10 @@ export function addPriceFor(kind, id) {
       </p>
       <div class="amountpad">
         <${Field} label="Amount" name="cost" type="number" step="0.01" min="0"
-                  inputmode="decimal" placeholder="0.00" autofocus big />
+                  inputmode="decimal" placeholder="0.00" autofocus big
+                  hint=${rec.bookingRef
+                    ? `0 is fine if another leg of ${rec.bookingRef} carries the fare`
+                    : '0 is fine if this one cost nothing'} />
         <${Field} label="Currency" name="currency" type="select"
                   value=${rec.currency || state.trip.homeCurrency} options=${currencyOptions()} />
       </div>
@@ -341,8 +344,12 @@ export function addPriceFor(kind, id) {
                            { value: 'yes', label: `Yes — split between ${
                              kind === 'stay' ? D.partySize(state, rec) : D.headcount(state)}` }]} />`,
     onSubmit(v) {
-      const cost = parseFloat(v.cost);
-      if (!cost || cost <= 0) { toast('Enter an amount'); return; }
+      /* Zero is a legitimate answer, not an empty box. Four flights on one
+         ticket have one fare: the total goes on one leg and the others are
+         genuinely nothing, and refusing 0 left them asking forever. Only a
+         blank field is "no answer". */
+      const cost = v.cost === '' || v.cost === undefined ? NaN : parseFloat(v.cost);
+      if (!Number.isFinite(cost) || cost < 0) { toast('Enter an amount, or 0'); return; }
       const currency = v.currency || state.trip.homeCurrency;
 
       Store.mutate((d) => {
@@ -351,6 +358,7 @@ export function addPriceFor(kind, id) {
         if (target) { target.cost = cost; target.currency = currency; }
       });
 
+      if (cost === 0) { toast('Recorded as no extra cost'); return; }
       if (kind === 'stay' && v.group === 'yes') { splitStay(id); return; }
 
       /* A leg or a solo booking becomes your expense directly. */
@@ -517,12 +525,11 @@ export function welcome() {
     render: () => html`
       <${Field} label="Nickname" name="nickname" value=${me.nickname} autofocus
                 placeholder="what you want to be called" />
-      <div class="formgrid">
-        <${Field} label="Email" name="email" type="email" value=${me.email}
-                  hint="optional — never sent anywhere" />
-        <${Field} label="Age" name="age" type="number" min="0" value=${me.age || ''}
-                  hint="optional — tailors packing and pace advice" />
-      </div>
+      <${Field} label="Email" name="email" type="email" value=${me.email}
+                placeholder="so a shared copy knows whose it is"
+                hint="stays in this file — never sent anywhere" />
+      <${Field} label="Age" name="age" type="number" min="0" value=${me.age || ''}
+                hint="optional — tailors packing and pace advice" />
       <p class="small muted">
         Everything stays in this browser. There is no account, and nothing leaves
         the file. You can change this any time under Trip data.
@@ -755,7 +762,10 @@ export function importTrip() {
     const res = Store.importJSON(text);
     if (!res.ok) { toast(res.error); return; }
     toast(`Imported ${name}`);
-    if (Store.takeForkFlag()) editMe();
+    /* An imported file is somebody else's trip until the person holding it
+       says who they are — same question as a first open, so ask it the same
+       way rather than in a sheet titled "About you". */
+    if (Store.takeForkFlag()) welcome();
   });
 }
 

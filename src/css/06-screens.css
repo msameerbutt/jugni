@@ -145,3 +145,22 @@ body[data-readonly="true"] .hide-readonly { display: none !important; }
 .rebuilt .icon { color: var(--brass); flex-shrink: 0; }
 .rebuilt__text { flex: 1 1 18rem; min-width: 0; font-size: var(--step--1); margin: 0; }
 .rebuilt__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* ---------- Quick facts strip ----------
+   Short destination facts — emergency number, plug type, tipping — all visible
+   at once. As cards in a carousel each of these cost most of a phone screen to
+   say twenty-five characters, and hid the next one behind a swipe. */
+.qfacts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3) var(--space-4); margin: var(--space-4) 0 0;
+  padding-top: var(--space-4); border-top: 1px solid var(--line);
+}
+.qfact { min-width: 0; }
+.qfact__k {
+  font-size: var(--step--2); text-transform: uppercase; letter-spacing: .08em;
+  color: var(--ink-faint); font-weight: 600; margin-bottom: 2px;
+}
+.qfact__v { margin: 0; font-size: var(--step--1); color: var(--ink); }
+
+/* An event happening today gets the "you are here" treatment. */
+.row--now { border-left: 3px solid var(--transit-blue); padding-left: var(--space-3); }

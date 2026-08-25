@@ -19,11 +19,11 @@ direction. Never hand-edit an existing `input.json` to force a change through.
 
 ## The schema
 
-See `docs/jugni-spec.md` §4 for the authoritative shape (currently **1.4**).
+See `docs/jugni-spec.md` §4 for the authoritative shape (currently **1.5**).
 `make validate` checks it mechanically — run it, and read the warnings, which
 are usually real.
 
-### What 1.4 asks of you
+### What 1.5 asks of you
 
 - **`cities[].countryCode`** — ISO 3166-1 alpha-2, lowercase. Set it. The flag
   lookup falls back to matching the country *name*, and booking platforms spell
@@ -44,6 +44,12 @@ are usually real.
   three-bed room in another. Without it the app divides every bill by the
   traveller count, which understates a share on any booking that was not the
   whole group — and the wrong number looks just as plausible as the right one.
+- **`extras[].kind`** — `food`, `free`, `nightlife`, `event`, or `note`. This
+  is what turns the destination page from one pile of notes into the panels
+  someone actually opens a phone for on a street corner. Default is `note`;
+  filling it in is most of the value of a destination page.
+- **`extras[].startDate` / `endDate`** — only for `kind: "event"`, and only
+  when the date is a **fact**. See "Events are dated only when you know" below.
 - **`trip.rateHints`** — see "Record the document's own exchange rate" below.
 
 ### Do not restate the standard catalogue
@@ -100,6 +106,20 @@ belongs in `stays[]` with no `confirmationNumber` and no `cost`, and a `notes`
 line saying it is family accommodation. `make validate` will suggest moving it
 to `extras[]` — that warning is aimed at the three-hotel-links case, so say why
 you kept it rather than silently ignoring it.
+
+### The last leg lands somewhere, on some day
+
+A return ticket states its arrival, and it is usually the one datetime people
+leave blank — the eye stops at the departure. Fill `arriveDateTime` on the
+final leg like any other, and set `trip.endDate` to the day the traveller is
+**home**, not the day they took off. A long-haul return crosses midnight often
+enough that these differ, and when they do, the trip silently loses its last
+day: the route ends a day early and the recap counts wrong.
+
+The document will tell you if you read past the departure time. A journey
+duration (*"1d 2h 25m"*) plus the local arrival time is enough on its own —
+cross-check it in UTC, because the offsets are what make it look wrong. Never
+ask the traveller for a date their own ticket already states.
 
 ### Datetimes carry their offset
 
@@ -184,6 +204,13 @@ hop. Put the booking total on the first leg with a `notes` line saying what it
 covers, and leave the siblings unset — the app reads the shared `bookingRef`
 and stops asking about the rest. Do not spread an invented per-leg share.
 
+**`cost: 0` and no `cost` are different answers.** Absent means nobody has
+recorded a fare yet, and the app keeps asking. Zero means someone looked and
+the answer was nothing — a leg on a ticket already paid for elsewhere, a room a
+relative is not charging for. Never write `0` to silence a prompt about a fare
+you simply do not know: that is the fabricated-zero trap two paragraphs up,
+and it makes the spend total quietly wrong. Leave it out instead.
+
 ### A reused spreadsheet carries last year's answers
 
 Planning sheets get copied forward. The giveaway is a date whose weekday does
@@ -223,7 +250,9 @@ Try the closest existing category **first**:
 |---|---|
 | A scheduling detail, something to do by a date | `checklist` |
 | A place fact — emergency number, plug type, custom | `destinationNotes` |
-| A festival date, a visa quirk, a packing tip that isn't a task | `extras` |
+| A festival or anything with dates | `extras` with `kind: "event"` |
+| Where to eat, what is free, where to go after dark | `extras` with the matching `kind` |
+| A visa quirk, a packing tip that isn't a task | `extras` with `kind: "note"` |
 
 Only when nothing genuinely fits does it become an `extras[]` record. Set
 `displayHint` to how the UI should render it — `list`, `table`, `text`, `link`,
@@ -249,6 +278,117 @@ Confirmation.pdf"`. At a check-in desk, a traveller needs to know which email or
 downloads-folder file to open for the real document. Costs one string; saves a
 bad ten minutes.
 
+### Every stop gets the same shape
+
+Coverage that depends on how much you happened to know about a city is not a
+guide — the traveller opens Vienna after Berlin and finds half a page. Decide
+the shape once and fill it everywhere.
+
+**Every stop, without exception, gets the same five facts** in
+`destinationNotes`: `Emergency`, `Power`, `Money`, `Tipping`, `<Month>
+weather`. Same five titles on the one-night stopover and the four-night stay
+alike. Two neighbouring countries sharing a plug type is not a reason to omit
+it from one of them — the reader does not know that yet, and a missing row
+reads as an oversight rather than as sameness.
+
+**Every stop you sleep in** gets `food`, `free` and `nightlife`, plus an
+`event` where there is something real to point at.
+
+**A transit stop still gets a page.** A four-hour ferry visit or a lunchtime
+stop between two cities gets food and free sized to the hours it has, and a
+nightlife card that says plainly there is no evening here and what to do if the
+plan slips. That is more useful than an absent section.
+
+Aim for roughly the same weight per city. If one stop carries four times the
+content of another, the thin one is under-researched, not simpler.
+
+### What makes one of these worth reading
+
+A list of neighbourhoods is not worth opening an app for. Each card should
+carry, in about five lines:
+
+- **a name you can walk to**, not a category — "Konnopke's, under the U2 tracks
+  at Eberswalder Straße", not "try a currywurst"
+- **a time that matters** — the market is Tuesday and Friday, the food yard
+  shuts for winter, the last metro is 00:30
+- **one thing that is not obvious** — the queue at the famous place is forty
+  minutes and the Späti is ninety per cent as good; the aurora looks grey to
+  the eye and green to a camera; cycling home drunk is enforced here
+- **a price anchor in relative terms** — "roughly double Berlin", "the cheapest
+  hot meal in the city". Absolute prices date badly and the file is built
+  months ahead of the trip.
+
+Write it for someone standing on a street corner with one hand free.
+
+### Events are dated only when you know
+
+An undated event shows as a standing fixture and always appears; a dated one
+only appears when it overlaps the stay, and is badged **on now** or **this
+week** against the reader's real clock. That behaviour is only worth having if
+the dates are true.
+
+So date the things that are facts — an aurora window is astronomy, a public
+holiday is published years ahead. Do **not** date a festival whose next
+programme is unannounced. Write what you know, say the dates are not out, and
+attach the official link. A guessed date is worse than no date here, because
+the app will confidently badge it "on now" and send someone across a city.
+
+### Short facts go in `destinationNotes`, not `extras`
+
+The destination page renders a short `destinationNotes` body — under about 90
+characters — as one cell in a facts strip, and anything longer as a card. An
+`extras` record is always a card.
+
+So a place fact that fits on a line belongs in `destinationNotes`: emergency
+number, plug type, tipping custom. Filed as `extras` they each cost most of a
+phone screen to say twenty-five characters, and hid the next one behind a
+carousel swipe. Keep them to a line and they all fit on screen at once.
+
+### One fact, one place
+
+Panels make it easy to say the same thing twice: a "Nightlife" note beside an
+"After dark" card, an "Aurora" note beside an aurora event, a sights list
+beside a free-things list with four entries in common. Each of those costs a
+whole card on a phone to repeat what is directly above it.
+
+Before adding a record, read what the city already has. If the new panel says
+it better, **move the content and delete the note** rather than leaving both.
+Watch for these in particular:
+
+- a climate note under the live forecast widget — keep the numbers, drop the
+  caveat about the widget, and let it fall into the facts strip
+- a transit-at-night note and a nightlife card — one paragraph, in the card
+- a "must-try dishes" list and a "where to eat" list — genuinely different
+  questions, so title them **What to eat** and **Where to eat** rather than
+  merging them into one long card
+- a sights list mis-filed as `free` when a third of it needs a ticket
+
+### Every panel earns a way out
+
+Food, free, nightlife and event records should each carry `links` to a live
+source. Baked content is what works on hostel wifi with no signal; the link is
+what is current. **Never fetch one to render the page** (spec §8): outbound
+HTTP is unavailable in the build environment, so a live call cannot be verified
+before it ships, and a destination page that needs the network to show anything
+is exactly the failure the offline promise exists to prevent.
+
+Sources worth reaching for, all free and none needing a key or a login:
+
+| For | Source | Shape |
+|---|---|---|
+| Eat / see / drink | Wikivoyage | `en.wikivoyage.org/wiki/<City>#Eat`, also `#See`, `#Drink` |
+| What is on this week | the city's own tourist board | its published events calendar |
+| A specific venue or festival | that organisation's own site | its page, not an aggregator's |
+| Space weather, tides, sunrise | the national agency | NOAA, the met office |
+
+Keep **the list of source families here and the actual URLs in the trip**. A
+per-city link is trip data: it rots, it is worth rechecking each time, and a
+Skill that accumulated them would grow into a directory nobody maintains — the
+sprawl `06-skill-maintenance.md` warns about. What belongs in a Skill is the
+rule that decides them: free, no key, no login, and stable enough that a file
+opened in two years still lands somewhere real. Prefer the primary source over
+an aggregator for exactly that reason.
+
 ## Pre-fill the destination essentials
 
 Every city gets a starter set of `destinationNotes`: emergency number, plug type
@@ -262,6 +402,7 @@ what is wrong for their trip.
 - [ ] `make validate TRIP=<slug>` passes, and you have read the warnings
 - [ ] Every stay and leg traces back to a real confirmed document
 - [ ] One `travelers[]` entry per human being
-- [ ] Every datetime has an offset
+- [ ] Every datetime has an offset, including the arrival of the last leg
+- [ ] `trip.endDate` is the day you get home, not the day you fly
 - [ ] Gaps you found are stated to the user, not filled with guesses
 - [ ] `05-quality-bar.md` checked against the built file

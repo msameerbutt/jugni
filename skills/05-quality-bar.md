@@ -40,6 +40,26 @@ is. Everything below is what the harness cannot judge.
       Check at a narrow viewport, not just a wide one.
 - [ ] **Every column that can be zero still renders.** A figure that disappears
       when it is zero reads as a bug and hides what was never counted.
+- [ ] **Two destination pages have the same sections.** Open the shortest stop
+      and the longest one side by side. Same five facts, same panels, content
+      within the same order of magnitude. A page that is thin because nobody
+      researched it looks identical to one that is thin because there is
+      nothing there — and only one of those is acceptable.
+- [ ] **No section repeats the one above it.** A note and a panel card saying
+      the same thing costs two screens on a phone to say it once. Read a whole
+      destination page top to bottom before shipping it.
+- [ ] **A carousel needs something to scroll.** One or two cards behind a
+      horizontal swipe is a gesture for nothing, and it squeezes a list into a
+      narrow column. Stack them.
+- [ ] **Every screen is reachable on a phone.** Count the tab bar against the
+      narrowest width you support. Tabs that overflow into a hidden horizontal
+      scroll are tabs nobody finds — the last one especially. Tools that act on
+      the file rather than move you around it (share, trip data) belong at the
+      top as icons, not as extra rows competing with the screens.
+- [ ] **A one-line fact does not get a whole card.** Emergency number, plug
+      type, tipping: on a phone these belong in a strip where all of them are
+      visible at once. A carousel that spends a screen on "Type C, 230V" and
+      hides the next fact behind a swipe is the defect, not the content.
 - [ ] It does not look like either AI default: warm cream + terracotta serif, or
       near-black + one acid accent.
 - [ ] The Overview is the manifest thread — one connected route line of ticket

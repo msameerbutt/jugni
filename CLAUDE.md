@@ -96,6 +96,36 @@ organised.
 
 ---
 
+## The sample trip ships with the repo
+
+`trips/sample` is the **only** trip committed to git, and the only one anyone
+cloning this repo can read. It is a scrubbed copy of the reference trip: every
+name, email, phone number, street address, booking reference and PIN in it is
+invented, and `scripts/make_sample.py` refuses to write the file if a single
+string from the real trip survives.
+
+**Whenever you change the schema, the app, or the reference trip's content,
+regenerate it:**
+
+```
+make sample
+```
+
+That rebuilds it, validates it, builds it and runs `make check` against it. A
+sample left behind is worse than no sample — it is the first thing a new reader
+opens, and it will be a schema version out of date and missing whatever was
+just added. Treat it as part of the change, not as follow-up work.
+
+`TRIP` defaults to `sample`, so `make check` with no arguments verifies
+something real. The empty shell (build path (b), spec §8) is `make blank`.
+
+The built `trips/sample/jugni.html` is committed too, on purpose: cloning the
+repo and opening that one file is the fastest way to see what Jugni is, with no
+Docker and no build. It is the one build artefact in the repo, and `make
+sample` regenerates it — which is the other reason not to skip that step.
+
+---
+
 ## Working with feedback
 
 Feedback lives in [feedback/](feedback/), one folder per cycle, `original.md`
@@ -128,6 +158,13 @@ Recorded so they are not rediscovered:
 - **Full-`innerHTML` re-rendering** was the root cause of four cycle-01
   complaints — no exit animations, lost scroll and open/closed state. Replaced
   with Preact + htm in cycle 01. Do not reintroduce it.
+- **A `.replace()` that matches nothing reports success if you let it.** A
+  batch of edits ended with `print("updated")` outside any check, and six
+  sections were never written because the anchor was a `##` heading and the
+  script looked for `###`. The file said "updated"; two follow-up scripts then
+  targeted sections that did not exist and also silently did nothing. Any
+  scripted edit to a doc or a source file must assert its anchor was found and
+  its result is present, or fail loudly — a print statement is not a check.
 - **A `sed`-style `.replace()` on an import line silently no-ops if an
   earlier edit already changed that exact string** — and an unimported htm
   component (`<${Foo}` with no `Foo` binding) compiles cleanly and only throws
@@ -169,6 +206,19 @@ Recorded so they are not rediscovered:
 - **`raw/` PDFs vary wildly.** Some state the charged currency explicitly
   (Copenhagen: DKK, AUD "just an estimate"); some itemise in AUD. Read the
   document, do not pattern-match.
+- **Every trip builds to a file called `jugni.html`, and they shared one
+  storage key.** Opening a second trip in the same browser overwrote the
+  first's ticked tasks and logged spend — silently, because the app then
+  showed a perfectly valid trip and nothing looked wrong until the traveller
+  went looking for their edits. `file://` shares an origin between files in
+  some browsers, and any hosted setup shares it always. The build now stamps
+  `data-trip` on `#jugni-data` (the slug, or a hash of trip name + start date
+  — stable across rebuilds, different between trips) and the store scopes
+  `jugni.trip.v1`, `jugni.build.v1` and `jugni.cleared` to it. Per-viewer
+  preferences (`jugni.pref.*`, `jugni.lastCurrency`) stay global on purpose.
+  A copy saved under the old bare key is adopted once, but only after matching
+  trip name and start date — the bare key is exactly where another trip's data
+  may be sitting.
 - **localStorage shadows a rebuilt file.** `Store.init` prefers the saved copy
   over the baked trip on purpose, so reopening never discards a traveller's
   edits — but that also means regenerating with new bookings and opening the

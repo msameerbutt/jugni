@@ -3,6 +3,12 @@
 # booking PDFs, extracted text, names, GPS coordinates, confirmation numbers.
 trips/*
 !trips/.gitkeep
+# The sample trip is the one exception: it is committed on purpose, and every
+# name, address, booking reference and phone number in it is invented. Nothing
+# real ever goes in here — scripts/make_sample.py refuses to write it if a
+# single string from a real trip survives.
+!trips/sample
+!trips/sample/**
 input.json
 output-*.json
 output.json

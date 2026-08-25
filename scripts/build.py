@@ -222,9 +222,25 @@ def main() -> int:
     build_id = hashlib.sha256(
         embed_json(trip).encode("utf-8")).hexdigest()[:12] if trip else ""
 
+    # Which trip this file is, for the browser's storage. Every trip builds to
+    # a file called jugni.html, and on one origin they all wrote to the same
+    # localStorage key — so opening a second trip overwrote the first one's
+    # ticked tasks and logged spend, silently.
+    #
+    # This must stay stable across rebuilds (or a regeneration would orphan the
+    # traveller's edits) while differing between trips. The slug is both, and
+    # is what the traveller already calls the trip. Without one, fall back to
+    # the trip's own name and start date, which are stable for the same reason.
+    trip_key = args.trip.strip() if args.trip.strip() else ""
+    if not trip_key and trip:
+        t = trip.get("trip", {})
+        trip_key = hashlib.sha256(
+            f"{t.get('name','')}|{t.get('startDate','')}".encode("utf-8")).hexdigest()[:12]
+
     template = (paths.TEMPLATES / "app.html").read_text(encoding="utf-8")
     html = (template
             .replace("{{BUILD_ID}}", build_id)
+            .replace("{{TRIP_KEY}}", trip_key)
             .replace("{{TRIP_TITLE}}", f"{name} · Jugni" if name != "Jugni" else "Jugni")
             .replace("{{TRIP_DESCRIPTION}}",
                      "Your trip, in one place — checklist, cities, expenses, weather and guide.")

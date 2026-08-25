@@ -32,9 +32,26 @@ export function Rail({ active, state, onShare }) {
 
   return html`<nav class="rail" aria-label="Trip sections">
     <div class="rail__brand">
-      ${D.ownerPossessive(state) && html`
-        <span class="rail__owner">${D.ownerPossessive(state)}</span>`}
-      <span class="rail__wordmark">Jugni</span>
+      <div class="rail__name">
+        ${D.ownerPossessive(state) && html`
+          <span class="rail__owner">${D.ownerPossessive(state)}</span>`}
+        <span class="rail__wordmark">Jugni</span>
+      </div>
+      ${/* Share and Trip data sit at the top as icons rather than as two more
+           worded rows at the bottom: they are tools for the file, not places
+           in the trip, and putting them beside the wordmark stops them
+           reading as an eighth and ninth screen. */ ''}
+      <div class="rail__tools">
+        <button class="btn btn--ghost btn--icon hide-readonly" onClick=${onShare}
+                aria-label="Share this trip" title="Share">
+          <${Icon} name="share-2" />
+        </button>
+        <a class="btn btn--ghost btn--icon" href="#/data"
+           aria-label="Trip data" title="Trip data"
+           aria-current=${active === 'data' ? 'page' : undefined}>
+          <${Icon} name="settings" />
+        </a>
+      </div>
     </div>
     <p class="rail__tripname">
       ${state.trip.name || 'Untitled trip'}
@@ -54,15 +71,6 @@ export function Rail({ active, state, onShare }) {
 
     <${Thread} state=${state} />
 
-    <div class="rail__foot">
-      <button class="navstub hide-readonly" data-accent="brass" onClick=${onShare}>
-        <${Icon} name="share-2" /><span class="navstub__label">Share</span>
-      </button>
-      <a class="navstub" href="#/data" data-accent="sage"
-         aria-current=${active === 'data' ? 'page' : undefined}>
-        <${Icon} name="database" /><span class="navstub__label">Trip data</span>
-      </a>
-    </div>
   </nav>`;
 }
 
